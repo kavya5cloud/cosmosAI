@@ -107,7 +107,7 @@ export default function AppPage() {
   const [accountsEnabled, setAccountsEnabled] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [trial, setTrial] = useState<{ active: boolean; daysLeft: number; endsAt: string } | null>(null);
-  const [nudge, setNudge] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
   const [mtab, setMtab] = useState<"company" | "analytics" | "agents" | "chat">("company");
   const [gsc, setGsc] = useState<{ configured: boolean; connected: boolean; sites: string[] }>({ configured: false, connected: false, sites: [] });
   const [gscData, setGscData] = useState<null | { site: string; impressions: string; clicks: string; ctr: string; position: string; series: { labels: string[]; impressions: number[]; clicks: number[] }; queries: { pos: string; query: string; trend: string }[] }>(null);
@@ -140,21 +140,19 @@ export default function AppPage() {
     fetch("/api/auth/me")
       .then((r) => r.json())
       .then((d) => { setAuthUser(d.user?.email || null); setAccountsEnabled(!!d.accountsEnabled); setTrial(d.trial || null); })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setAuthReady(true));
   }, []);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    // clear the local workspace so the signed-out user can't keep using the account's data
+    try { localStorage.removeItem("cosmos.state"); localStorage.removeItem("cosmos.nudgeDismissed"); } catch {}
     location.reload();
   }
 
-  /* nudge anonymous users to sign in so their workspace is saved to an account */
-  useEffect(() => {
-    if (!entered || authUser || !accountsEnabled) { setNudge(false); return; }
-    if (typeof window !== "undefined" && localStorage.getItem("cosmos.nudgeDismissed")) return;
-    const t = setTimeout(() => setNudge(true), 5000);
-    return () => clearTimeout(t);
-  }, [entered, authUser, accountsEnabled]);
+  // Sign-in is required to use the app once accounts are enabled.
+  const mustSignIn = authReady && accountsEnabled && !authUser && entered;
 
   /* collapse the decorative terminal by default on small screens */
   useEffect(() => {
@@ -602,19 +600,17 @@ Give exactly 2 items per channel and 4 rankings, all specific to ${p.name}. Keep
           </div>
         </div>
       )}
-      {nudge && (
-        <div className="nudge">
-          <div className="nudge-txt">
-            <strong>Save this workspace</strong>
-            <span>Create a free account so your analysis is tied to you, not just this browser.</span>
-          </div>
-          <div className="nudge-acts">
-            <button className="nudge-x" onClick={() => { setNudge(false); try { localStorage.setItem("cosmos.nudgeDismissed", "1"); } catch {} }}>Not now</button>
-            <button className="nudge-go" onClick={() => { setNudge(false); setAuthOpen(true); }}>Sign in</button>
+      {mustSignIn && !authOpen && (
+        <div className="trial-lock">
+          <div className="trial-lock-card">
+            <img src="/logo.png" alt="cosmos.ai" style={{ height: 20, imageRendering: "pixelated", marginBottom: 18 }} />
+            <h2>Sign in to continue</h2>
+            <p>Create a free account to save your analysis and keep using cosmos. Your work carries over.</p>
+            <button className="acct-btn pri" style={{ marginTop: 18 }} onClick={() => setAuthOpen(true)}>Sign in / Create account</button>
           </div>
         </div>
       )}
-      {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
+      {authOpen && <AuthModal onClose={() => { if (!mustSignIn) setAuthOpen(false); }} forced={mustSignIn} />}
       {authUser && trial && !trial.active && (
         <div className="trial-lock">
           <div className="trial-lock-card">
@@ -669,7 +665,7 @@ const AUTH_ERR: Record<string, string> = {
   no_database: "Accounts aren't set up yet (no database connected).",
 };
 
-function AuthModal({ onClose }: { onClose: () => void }) {
+function AuthModal({ onClose, forced }: { onClose: () => void; forced?: boolean }) {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
@@ -704,9 +700,9 @@ function AuthModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="authwrap" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="authwrap" onClick={(e) => { if (e.target === e.currentTarget && !forced) onClose(); }}>
       <div className="authcard">
-        <button className="xclose" onClick={onClose}>✕</button>
+        {!forced && <button className="xclose" onClick={onClose}>✕</button>}
         <h3>{mode === "signup" ? "Create your account" : "Welcome back"}</h3>
         <div className="authsub">{mode === "signup" ? "Save your workspace across devices." : "Sign in to your cosmos workspace."}</div>
         <label>Email</label>
