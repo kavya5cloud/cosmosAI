@@ -107,6 +107,8 @@ export default function AppPage() {
   const [accountsEnabled, setAccountsEnabled] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [mtab, setMtab] = useState<"company" | "analytics" | "agents" | "chat">("company");
+  const [gsc, setGsc] = useState<{ configured: boolean; connected: boolean; sites: string[] }>({ configured: false, connected: false, sites: [] });
+  const [gscData, setGscData] = useState<null | { site: string; impressions: string; clicks: string; ctr: string; position: string; series: { labels: string[]; impressions: number[]; clicks: number[] }; queries: { pos: string; query: string; trend: string }[] }>(null);
 
   const tlogRef = useRef<HTMLDivElement>(null);
   const chatBodyRef = useRef<HTMLDivElement>(null);
@@ -148,6 +150,33 @@ export default function AppPage() {
   useEffect(() => {
     if (entered && typeof window !== "undefined" && window.innerWidth <= 720) setTermCollapsed(true);
   }, [entered]);
+
+  /* ---- Google Search Console status (+ handle OAuth redirect) ---- */
+  useEffect(() => {
+    fetch("/api/google/status").then((r) => r.json()).then(setGsc).catch(() => {});
+    const p = new URLSearchParams(window.location.search).get("gsc");
+    if (p) {
+      const msg: Record<string, string> = {
+        connected: "Search Console connected ✓",
+        notconfigured: "Google isn't configured on the server yet",
+        denied: "Connection cancelled",
+        error: "Couldn't connect — try again",
+        login: "Sign in first, then connect",
+      };
+      if (msg[p]) { setToast(msg[p]); setTimeout(() => setToast(""), 3000); }
+      window.history.replaceState({}, "", "/app");
+    }
+  }, [authUser]);
+
+  /* ---- pull real Search Console data when connected ---- */
+  useEffect(() => {
+    if (!gsc.connected || !gsc.sites.length) { setGscData(null); return; }
+    const site = gsc.sites[0];
+    fetch(`/api/google/data?site=${encodeURIComponent(site)}&range=${range}`)
+      .then((r) => r.json())
+      .then((d) => setGscData(d.error ? null : d))
+      .catch(() => setGscData(null));
+  }, [gsc, range]);
 
   /* ---- persist whenever meaningful state changes ---- */
   useEffect(() => {
@@ -425,27 +454,55 @@ Give exactly 2 items per channel and 4 rankings, all specific to ${p.name}. Keep
                     </span>
                   </div>
                   <div className="an-h">How people found you</div>
-                  <div className="an-s">Sample figures — connect Google Search Console for live numbers</div>
+                  {gscData ? (
+                    <div className="an-s">Live from Search Console · {gscData.site.replace(/^sc-domain:/, "").replace(/^https?:\/\//, "")}</div>
+                  ) : gsc.configured && authUser ? (
+                    <div className="an-s">Sample figures — <a href="/api/google/connect" style={{ color: "var(--acc)" }}>connect Search Console</a> for live data</div>
+                  ) : gsc.configured ? (
+                    <div className="an-s">Sample figures — sign in, then connect Search Console</div>
+                  ) : (
+                    <div className="an-s">Sample figures — connect Google Search Console for live numbers</div>
+                  )}
                   <div className="statgrid">
                     <div className="statrow">
-                      <div className="stat"><div className="sl">Saw you in Google</div><div className="sv">{d.saw}</div><div className="sd">↗ {d.sawD}</div></div>
-                      <div className="stat"><div className="sl">Clicked through</div><div className="sv">{d.clicked}</div><div className="sd">↗ {d.clickedD}</div></div>
-                      <div className="stat"><div className="sl">Visited your site</div><div className="sv">{d.visited}</div><div className="sd">↗ {d.visitedD}</div></div>
+                      {gscData ? (
+                        <>
+                          <div className="stat"><div className="sl">Impressions</div><div className="sv">{gscData.impressions}</div></div>
+                          <div className="stat"><div className="sl">Clicks</div><div className="sv">{gscData.clicks}</div></div>
+                          <div className="stat"><div className="sl">Click rate</div><div className="sv">{gscData.ctr}</div></div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="stat"><div className="sl">Saw you in Google</div><div className="sv">{d.saw}</div><div className="sd">↗ {d.sawD}</div></div>
+                          <div className="stat"><div className="sl">Clicked through</div><div className="sv">{d.clicked}</div><div className="sd">↗ {d.clickedD}</div></div>
+                          <div className="stat"><div className="sl">Visited your site</div><div className="sv">{d.visited}</div><div className="sd">↗ {d.visitedD}</div></div>
+                        </>
+                      )}
                     </div>
-                    <div className="statfoot"><span><b>4.7%</b> click rate</span><span><b>4.1×</b> from other channels</span></div>
+                    <div className="statfoot">
+                      {gscData
+                        ? <><span>avg. position <b>{gscData.position}</b></span><span>last {range === "7d" ? "7" : "30"} days</span></>
+                        : <><span><b>4.7%</b> click rate</span><span><b>4.1×</b> from other channels</span></>}
+                    </div>
                   </div>
                   <div className="sect">
-                    <div className="an-h">Traffic over time</div>
-                    <div className="an-s">Visits vs. search clicks — last {range === "7d" ? "7" : "30"} days</div>
-                    <div className="chartbox"><Chart data={d} /></div>
-                    <div className="legend"><span><i />Visits</span><span className="l2"><i />Search clicks</span></div>
+                    <div className="an-h">{gscData ? "Impressions & clicks over time" : "Traffic over time"}</div>
+                    <div className="an-s">{gscData ? `Search Console — last ${range === "7d" ? "7" : "30"} days` : `Visits vs. search clicks — last ${range === "7d" ? "7" : "30"} days`}</div>
+                    <div className="chartbox">
+                      <Chart
+                        labels={gscData ? gscData.series.labels : d.labels}
+                        primary={gscData ? gscData.series.impressions : d.visits}
+                        secondary={gscData ? gscData.series.clicks : d.clicks}
+                      />
+                    </div>
+                    <div className="legend"><span><i />{gscData ? "Impressions" : "Visits"}</span><span className="l2"><i />{gscData ? "Clicks" : "Search clicks"}</span></div>
                   </div>
                   <div className="sect">
-                    <div className="an-h">How well you&apos;re ranking</div>
-                    <div className="an-s">Your position in Google and the queries bringing traffic</div>
+                    <div className="an-h">{gscData ? "Top queries" : "How well you're ranking"}</div>
+                    <div className="an-s">{gscData ? "Your best-performing queries in Search Console" : "Your position in Google and the queries bringing traffic"}</div>
                     <div style={{ marginTop: 10 }}>
-                      {(rankings.length ? rankings : FALLBACK_RANKS).map((r) => (
-                        <div className="rankrow" key={r.query}><span className="rankpos">{r.pos}</span><span className="rq">{r.query}</span><span className="rt">{r.trend}</span></div>
+                      {(gscData ? gscData.queries : (rankings.length ? rankings : FALLBACK_RANKS)).map((r, i) => (
+                        <div className="rankrow" key={i}><span className="rankpos">{r.pos}</span><span className="rq">{r.query}</span><span className="rt">{r.trend}</span></div>
                       ))}
                     </div>
                   </div>
@@ -540,23 +597,24 @@ Give exactly 2 items per channel and 4 rankings, all specific to ${p.name}. Keep
   );
 }
 
-/* ---------- SVG traffic chart ---------- */
-function Chart({ data }: { data: (typeof CHART)["7d"] }) {
+/* ---------- SVG traffic chart (generic: primary = filled line, secondary = dashed) ---------- */
+function Chart({ labels, primary, secondary }: { labels: string[]; primary: number[]; secondary: number[] }) {
   const W = 560, H = 150, P = 10;
-  const max = Math.max(...data.visits) * 1.15;
-  const pt = (arr: number[], i: number): [number, number] => [P + (i * (W - 2 * P)) / (arr.length - 1), H - P - (arr[i] / max) * (H - 2 * P)];
+  const max = Math.max(...primary, 1) * 1.15;
+  const denom = Math.max(primary.length - 1, 1);
+  const pt = (arr: number[], i: number): [number, number] => [P + (i * (W - 2 * P)) / denom, H - P - ((arr[i] || 0) / max) * (H - 2 * P)];
   const line = (arr: number[]) => arr.map((_, i) => pt(arr, i).map((n) => n.toFixed(1)).join(",")).join(" ");
-  const area = `${P},${H - P} ${line(data.visits)} ${W - P},${H - P}`;
+  const area = `${P},${H - P} ${line(primary)} ${W - P},${H - P}`;
   return (
     <>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="Traffic over time">
         <polygon points={area} fill="rgba(205,166,242,.10)" />
-        <polyline points={line(data.visits)} fill="none" stroke="#CDA6F2" strokeWidth="2" />
-        <polyline points={line(data.clicks)} fill="none" stroke="#55565E" strokeWidth="1.5" strokeDasharray="4 4" />
-        {data.visits.map((_, i) => { const [x, y] = pt(data.visits, i); return <circle key={i} cx={x} cy={y} r="2.6" fill="#CDA6F2" />; })}
+        <polyline points={line(primary)} fill="none" stroke="#CDA6F2" strokeWidth="2" />
+        <polyline points={line(secondary)} fill="none" stroke="#55565E" strokeWidth="1.5" strokeDasharray="4 4" />
+        {primary.map((_, i) => { const [x, y] = pt(primary, i); return <circle key={i} cx={x} cy={y} r="2.6" fill="#CDA6F2" />; })}
       </svg>
       <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "'Geist Mono',monospace", fontSize: "9.5px", color: "var(--faint)", padding: "0 2px" }}>
-        {data.labels.map((l) => <span key={l}>{l}</span>)}
+        {labels.map((l, i) => <span key={i}>{l}</span>)}
       </div>
     </>
   );
