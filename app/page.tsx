@@ -213,9 +213,11 @@ export default function Landing() {
           <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <img src="/logo.png" alt="cosmos.ai" style={{ height: 12, imageRendering: "pixelated", opacity: 0.7 }} />
           </span>
-          <span style={{ display: "flex", gap: 18, alignItems: "center" }}>
+          <span style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
             <a href="#how" style={{ color: "var(--faint)", textDecoration: "none" }}>how it works</a>
             <a href="#pricing" style={{ color: "var(--faint)", textDecoration: "none" }}>pricing</a>
+            <a href="/privacy" style={{ color: "var(--faint)", textDecoration: "none" }}>privacy</a>
+            <a href="/terms" style={{ color: "var(--faint)", textDecoration: "none" }}>terms</a>
             <a href="mailto:hello@cosmos.ai" style={{ color: "var(--faint)", textDecoration: "none" }}>hello@cosmos.ai</a>
           </span>
         </div>
