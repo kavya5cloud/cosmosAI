@@ -96,6 +96,8 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 .landing .was{color:var(--faint);text-decoration:line-through;font-size:20px;margin-right:8px;font-weight:400}
 .landing .inc{margin-top:10px;font-family:'Geist Mono',monospace;font-size:12px;color:var(--dim)}
 .landing footer{padding:32px 0;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-family:'Geist Mono',monospace;font-size:12px;color:var(--faint)}
+.landing .foot-btn{color:var(--dim);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:6px 12px;transition:border-color .15s,color .15s}
+.landing .foot-btn:hover{color:var(--fg);border-color:var(--faint)}
 @media(max-width:560px){.landing .nav-r a:not(.btn){display:none}.landing .nav-r{gap:0}}
 @media(prefers-reduced-motion:reduce){.landing .cursor,.landing .pill i{animation:none}}
 
