@@ -255,10 +255,10 @@ export default function AppPage() {
 
   /* ---- persist whenever meaningful state changes ---- */
   useEffect(() => {
-    if (!hydrated.current || !entered || !profile) return;
+    if (!hydrated.current || !entered || !profile || demo) return;
     const s: Saved = { url, profile, competitors, chat, drafts, feed, rankings, docs: docCache, estTraffic };
     saveState(s);
-  }, [url, profile, competitors, chat, drafts, feed, rankings, docCache, estTraffic, entered]);
+  }, [url, profile, competitors, chat, drafts, feed, rankings, docCache, estTraffic, entered, demo]);
 
   /* ---- onboarding dot canvas ---- */
   useEffect(() => {
