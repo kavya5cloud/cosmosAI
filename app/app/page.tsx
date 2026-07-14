@@ -150,6 +150,8 @@ export default function AppPage() {
   const [authReady, setAuthReady] = useState(false);
   const [mtab, setMtab] = useState<"company" | "analytics" | "agents" | "chat">("company");
   const [gsc, setGsc] = useState<{ configured: boolean; connected: boolean; sites: string[] }>({ configured: false, connected: false, sites: [] });
+  const [verifyPopup, setVerifyPopup] = useState(false);
+  const verifyShownRef = useRef(false);
   const [gscData, setGscData] = useState<null | {
     site: string; impressions: string; clicks: string; ctr: string; position: string;
     deltas: { impressions: string; clicks: string; ctr: string; position: string };
@@ -234,6 +236,14 @@ export default function AppPage() {
     const ch = qs.get("channel");
     if (ch) setOpen((o) => ({ ...o, [ch]: true }));
   }, [authUser, url]);
+
+  /* ---- one-time "site not verified" popup when connected but no verified property ---- */
+  useEffect(() => {
+    if (authUser && gsc.connected && gsc.sites.length === 0 && !verifyShownRef.current) {
+      verifyShownRef.current = true;
+      setVerifyPopup(true);
+    }
+  }, [authUser, gsc]);
 
   /* ---- push notification status ---- */
   useEffect(() => {
@@ -860,6 +870,17 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
             <h2>Sign in to continue</h2>
             <p>Create a free account to save your analysis and keep using cosmos. Your work carries over.</p>
             <button className="acct-btn pri" style={{ marginTop: 18 }} onClick={() => setAuthOpen(true)}>Sign in / Create account</button>
+          </div>
+        </div>
+      )}
+      {verifyPopup && (
+        <div className="authwrap" onClick={(e) => { if (e.target === e.currentTarget) setVerifyPopup(false); }}>
+          <div className="authcard">
+            <button className="xclose" onClick={() => setVerifyPopup(false)}>✕</button>
+            <h3>Your website isn&apos;t verified yet</h3>
+            <div className="authsub">Google Search Console only shares data for sites you&apos;ve verified ownership of — and this Google account doesn&apos;t have any yet. So we&apos;re showing <strong>estimated</strong> numbers for now.</div>
+            <a className="submit" href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" style={{ display: "block", textAlign: "center", textDecoration: "none" }}>Verify my site in Search Console →</a>
+            <div className="toggle"><button onClick={() => setVerifyPopup(false)}>Continue with estimates</button></div>
           </div>
         </div>
       )}
