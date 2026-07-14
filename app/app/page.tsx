@@ -482,7 +482,19 @@ Give exactly 2 items per channel and 4 rankings, all specific to ${p.name}. Keep
                 disabled={pushBusy}
                 title={pushStatus.subscribed ? "Publish reminders on" : "Enable publish reminders"}
               >
-                {pushStatus.subscribed ? "🔔" : "🔕"}
+                {pushStatus.subscribed ? (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.8 5.7 1.8 5.7H4.2S6 13.5 6 9z" />
+                    <path d="M10.2 20a1.9 1.9 0 0 0 3.6 0" />
+                    <circle cx="17.5" cy="6" r="2.4" fill="currentColor" stroke="none" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.8 5.7 1.8 5.7H4.2S6 13.5 6 9z" />
+                    <path d="M10.2 20a1.9 1.9 0 0 0 3.6 0" />
+                    <path d="M4 3.5l16 17" opacity="0.85" />
+                  </svg>
+                )}
               </button>
             )}
             {authUser && trial?.active && <a href="/account" className="trialchip">{trial.daysLeft}d left</a>}
