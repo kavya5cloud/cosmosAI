@@ -321,11 +321,20 @@ export default function AppPage() {
     const bump = (n: number) => setProgress(n);
     try {
       bump(1);
-      const txt = await ai(
-        `Analyze the website ${u} using the page content above.\nRespond ONLY with JSON, no markdown fences, no preamble:\n{"name":"company name","oneLiner":"what it does in one sentence","audience":"who buys it","positioning":"2-sentence positioning summary","competitors":["3-4 names"],"voice":"3 adjectives for brand voice","description":"a 4-sentence company overview for a dashboard sidebar"}`,
-        u
-      );
-      const p = parseJSON(txt) as Profile;
+      // Retry once so a single flaky response / malformed JSON doesn't drop the whole
+      // analysis into demo mode (and then get saved).
+      let p: Profile | null = null;
+      let lastErr: unknown = null;
+      for (let attempt = 0; attempt < 2 && !p; attempt++) {
+        try {
+          const txt = await ai(
+            `Analyze the website ${u} using the page content above.\nRespond ONLY with JSON, no markdown fences, no preamble:\n{"name":"company name","oneLiner":"what it does in one sentence","audience":"who buys it","positioning":"2-sentence positioning summary","competitors":["3-4 names"],"voice":"3 adjectives for brand voice","description":"a 4-sentence company overview for a dashboard sidebar"}`,
+            u
+          );
+          p = parseJSON(txt) as Profile;
+        } catch (e) { lastErr = e; }
+      }
+      if (!p) throw lastErr || new Error("profile_failed");
       bump(3);
       setProfile(p);
       const comps = (p.competitors || []).slice(0, 4).map((n, i) => ({ n, c: ["#E86A3A", "#5A8DE8", "#E8843A", "#9A6AE8"][i % 4] }));
