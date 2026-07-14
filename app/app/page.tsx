@@ -359,7 +359,7 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
       bump(5); setDemo(false); setEntered(true);
     } catch {
       const host = hostOf(u);
-      setProfile({ name: host, oneLiner: "(demo mode — no AI key or quota)", audience: "early-stage teams", positioning: "Demo data shown. Add a working key to analyze for real.", competitors: ["—"], voice: "clear, direct, useful", description: "Cosmos is your AI CMO for teams who cannot afford a full marketing department. It researches opportunities, drafts content, and audits technical SEO across Reddit, LinkedIn, X, Hacker News and organic search — with every output queued for human review before anything goes live." });
+      setProfile({ name: host, oneLiner: "(couldn't reach the AI)", audience: "—", positioning: `We couldn't analyze ${host} — the AI was unreachable.`, competitors: ["—"], voice: "—", description: `We couldn't reach the AI to build a profile for ${host}, so this is placeholder data. If you're on the live site, make sure GROQ_API_KEY is set in your hosting environment, then re-run the analysis.` });
       setCompetitors([{ n: "okara.ai", c: "#E86A3A" }, { n: "jasper.ai", c: "#5A8DE8" }, { n: "hubspot.com", c: "#E8843A" }]);
       setChat([{ who: "ai", text: `Ran on ${host} in demo mode — add a working AI key to get real analysis.` }]);
       setFeed({}); setRankings([]); setDocCache({}); setEstTraffic(null);
