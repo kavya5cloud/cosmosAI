@@ -66,6 +66,39 @@ const CHART = {
   "30d": { labels: ["6/12", "6/17", "6/22", "6/27", "7/2", "7/7", "7/11"], visits: [1500, 1800, 2400, 2200, 2900, 2600, 3100], clicks: [280, 330, 450, 410, 520, 480, 560], saw: "301K", sawD: "+9.8%", clicked: "13.2K", clickedD: "+31.5%", visited: "54.7K", visitedD: "+17.9%" },
 };
 
+// deterministic PRNG seeded from a string, so a given site always shows the same estimate
+function seedRand(str: string) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return () => { h += 0x6d2b79f5; let t = Math.imul(h ^ (h >>> 15), 1 | h); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+function fmtN(n: number) {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + "K";
+  return String(Math.round(n));
+}
+function dayLabels(range: "7d" | "30d"): string[] {
+  const out: string[] = [];
+  const step = range === "7d" ? 1 : 5;
+  for (let i = 6; i >= 0; i--) { const d = new Date(Date.now() - (i * step + 2) * 86400000); out.push(`${d.getMonth() + 1}/${d.getDate()}`); }
+  return out;
+}
+// Build a CHART-shaped view from monthly estimates, scaled to the range with plausible variance.
+function buildEstData(est: { impressions: number; clicks: number; visits: number }, range: "7d" | "30d", seed: string) {
+  const rnd = seedRand(seed + range);
+  const scale = (range === "7d" ? 7 : 30) / 30;
+  const impT = est.impressions * scale, clkT = est.clicks * scale, visT = est.visits * scale;
+  const w = Array.from({ length: 7 }, () => 0.55 + rnd() * 0.9);
+  const wsum = w.reduce((a, b) => a + b, 0);
+  const visits = w.map((x) => Math.round((visT * x) / wsum));
+  const clicks = w.map((x) => Math.round((clkT * x) / wsum));
+  const delta = () => "+" + (4 + Math.floor(rnd() * 42)) + "." + Math.floor(rnd() * 10) + "%";
+  return {
+    labels: dayLabels(range), visits, clicks,
+    saw: fmtN(impT), sawD: delta(), clicked: fmtN(clkT), clickedD: delta(), visited: fmtN(visT), visitedD: delta(),
+  };
+}
+
 const FALLBACK_RANKS: Ranking[] = [
   { pos: "#3", query: "ai cmo tool", trend: "↑2" },
   { pos: "#7", query: "ai marketing agents", trend: "↑5" },
@@ -94,6 +127,7 @@ export default function AppPage() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [feed, setFeed] = useState<Record<string, FeedEntry>>({});
   const [rankings, setRankings] = useState<Ranking[]>([]);
+  const [estTraffic, setEstTraffic] = useState<{ impressions: number; clicks: number; visits: number } | null>(null);
   const [docCache, setDocCache] = useState<Record<string, string>>({});
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [tab, setTab] = useState<"overview" | "seo">("overview");
@@ -142,6 +176,7 @@ export default function AppPage() {
         setCompetitors(saved.competitors || []); setChat(saved.chat || []);
         setDrafts(saved.drafts || []); setFeed(saved.feed || {});
         setRankings(saved.rankings || []); setDocCache(saved.docs || {});
+        setEstTraffic(saved.estTraffic || null);
         setEntered(true);
       }
       hydrated.current = true;
@@ -221,9 +256,9 @@ export default function AppPage() {
   /* ---- persist whenever meaningful state changes ---- */
   useEffect(() => {
     if (!hydrated.current || !entered || !profile) return;
-    const s: Saved = { url, profile, competitors, chat, drafts, feed, rankings, docs: docCache };
+    const s: Saved = { url, profile, competitors, chat, drafts, feed, rankings, docs: docCache, estTraffic };
     saveState(s);
-  }, [url, profile, competitors, chat, drafts, feed, rankings, docCache, entered]);
+  }, [url, profile, competitors, chat, drafts, feed, rankings, docCache, estTraffic, entered]);
 
   /* ---- onboarding dot canvas ---- */
   useEffect(() => {
@@ -295,20 +330,27 @@ export default function AppPage() {
       setProfile(p);
       const comps = (p.competitors || []).slice(0, 4).map((n, i) => ({ n, c: ["#E86A3A", "#5A8DE8", "#E8843A", "#9A6AE8"][i % 4] }));
       setCompetitors(comps);
-      // Phase 2: generate a company-specific agents feed + search rankings
-      try {
-        const insTxt = await ai(
-          `You are cosmos, an AI CMO for ${p.name} — ${p.oneLiner}. Audience: ${p.audience}. Competitors: ${(p.competitors || []).join(", ")}.
+      // Phase 2: generate a company-specific agents feed + rankings, and (separately) an
+      // estimated-traffic figure. Kept as two calls so a failure in one can't break the other.
+      const insP = ai(
+        `You are cosmos, an AI CMO for ${p.name} — ${p.oneLiner}. Audience: ${p.audience}. Competitors: ${(p.competitors || []).join(", ")}.
 Output ONLY compact valid JSON (no markdown, no prose). Each item's first string is a specific, descriptive opportunity in 6-12 words. Exactly this shape:
 {"feed":{"reddit":{"summary":"36 opportunities ready","items":[["short thread angle","Draft reply"]]},"seo":{"summary":"46 recommendations","items":[["short keyword or fix","Draft post"]]},"geo":{"summary":"11 citation gaps","items":[["short AI-search gap","Fix gap"]]},"x":{"summary":"137 ideas","items":[["short post idea","Draft"]]},"linkedin":{"summary":"3 posts ready","items":[["short post idea","Review"]]},"articles":{"summary":"32 topics ready","items":[["short article title","Open"]]}},"rankings":[{"pos":"#3","query":"short query","trend":"↑2"}]}
 Give exactly 2 items per channel and 4 rankings, all specific to ${p.name}. Keep it short so the JSON is complete.`
-        );
-        const ins = parseJSON(insTxt);
-        if (ins.feed) setFeed(ins.feed as Record<string, FeedEntry>);
-        if (Array.isArray(ins.rankings)) setRankings(ins.rankings as Ranking[]);
-      } catch {
-        setFeed({}); setRankings([]);
-      }
+      ).then((t) => {
+        try { const ins = parseJSON(t); if (ins.feed) setFeed(ins.feed as Record<string, FeedEntry>); if (Array.isArray(ins.rankings)) setRankings(ins.rankings as Ranking[]); }
+        catch { setFeed({}); setRankings([]); }
+      }).catch(() => { setFeed({}); setRankings([]); });
+
+      const trafP = ai(
+        `Estimate realistic MONTHLY Google Search numbers for the website ${u} (${p.name} — ${p.oneLiner}). Consider how well-known and large the site is.
+Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>,"visits":<integer>}`
+      ).then((t) => {
+        try { const tt = parseJSON(t); if (typeof tt.impressions === "number" && tt.impressions > 0) setEstTraffic({ impressions: tt.impressions, clicks: tt.clicks || 0, visits: tt.visits || 0 }); else setEstTraffic(null); }
+        catch { setEstTraffic(null); }
+      }).catch(() => setEstTraffic(null));
+
+      await Promise.allSettled([insP, trafP]);
       setDocCache({});
       setChat([
         { who: "ai", text: `Morning. I ran the daily sweep on ${hostOf(u)} — 9 agents reported in.` },
@@ -320,7 +362,7 @@ Give exactly 2 items per channel and 4 rankings, all specific to ${p.name}. Keep
       setProfile({ name: host, oneLiner: "(demo mode — no AI key or quota)", audience: "early-stage teams", positioning: "Demo data shown. Add a working key to analyze for real.", competitors: ["—"], voice: "clear, direct, useful", description: "Cosmos is your AI CMO for teams who cannot afford a full marketing department. It researches opportunities, drafts content, and audits technical SEO across Reddit, LinkedIn, X, Hacker News and organic search — with every output queued for human review before anything goes live." });
       setCompetitors([{ n: "okara.ai", c: "#E86A3A" }, { n: "jasper.ai", c: "#5A8DE8" }, { n: "hubspot.com", c: "#E8843A" }]);
       setChat([{ who: "ai", text: `Ran on ${host} in demo mode — add a working AI key to get real analysis.` }]);
-      setFeed({}); setRankings([]); setDocCache({});
+      setFeed({}); setRankings([]); setDocCache({}); setEstTraffic(null);
       setDemo(true); setEntered(true);
     }
   }, [inputUrl]);
@@ -422,7 +464,8 @@ Give exactly 2 items per channel and 4 rankings, all specific to ${p.name}. Keep
     setDoc({ title: d.title, body: d.body });
   }
 
-  const d = CHART[range];
+  const estimated = !gscData && !!estTraffic;
+  const d = estTraffic ? buildEstData(estTraffic, range, url || "cosmos") : CHART[range];
   const geoGaps = feed.geo?.items?.length ? feed.geo.items : AGENTS.find((a) => a.id === "geo")?.items || [];
 
   /* ================= ONBOARDING ================= */
@@ -586,6 +629,8 @@ Give exactly 2 items per channel and 4 rankings, all specific to ${p.name}. Keep
                     <div className="an-s">Live · {displaySite(gscData.site)}</div>
                   ) : gsc.connected ? (
                     <div className="an-s">Loading Search Console…</div>
+                  ) : estimated ? (
+                    <div className="an-s">Estimated for {hostOf(url)} — connect Search Console for exact numbers</div>
                   ) : (
                     <div className="an-s">Sample figures — connect Search Console for live data</div>
                   )}
@@ -608,7 +653,7 @@ Give exactly 2 items per channel and 4 rankings, all specific to ${p.name}. Keep
                     <div className="statfoot">
                       {gscData
                         ? <><span>avg. position <b>{gscData.position}</b> ({gscData.deltas.position})</span><span>vs prior {range === "7d" ? "7" : "30"} days</span></>
-                        : <><span><b>4.7%</b> click rate</span><span>sample data</span></>}
+                        : <><span><b>{estTraffic ? ((estTraffic.clicks / Math.max(estTraffic.impressions, 1)) * 100).toFixed(1) + "%" : "4.7%"}</b> click rate</span><span>{estimated ? "estimated" : "sample data"}</span></>}
                     </div>
                   </div>
                   <div className="sect">

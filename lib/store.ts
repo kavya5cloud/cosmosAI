@@ -33,6 +33,7 @@ export type Saved = {
   feed?: Record<string, FeedEntry>;
   rankings?: Ranking[];
   docs?: Record<string, string>;
+  estTraffic?: { impressions: number; clicks: number; visits: number } | null;
 };
 
 const LS_KEY = "cosmos.state";
