@@ -606,6 +606,18 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
                   <span className="gsc-go">Connect →</span>
                 </a>
               )}
+              {gsc.connected && gsc.sites.length === 0 && (
+                <div className="gsc-card" style={{ cursor: "default", borderColor: "rgba(232,180,90,.3)" }}>
+                  <span className="gsc-ic" style={{ background: "rgba(232,180,90,.12)", borderColor: "rgba(232,180,90,.28)", color: "var(--amberr)" }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4" /><path d="M12 17h.01" /><path d="M10.3 3.9 2.4 18a1.9 1.9 0 0 0 1.7 2.8h15.8a1.9 1.9 0 0 0 1.7-2.8L13.7 3.9a1.9 1.9 0 0 0-3.4 0z" /></svg>
+                  </span>
+                  <span className="gsc-txt">
+                    <strong>Connected — but no verified site</strong>
+                    <span>This Google account owns no verified site in Search Console, so there&apos;s no data to pull. Showing an estimate instead.</span>
+                  </span>
+                  <a className="gsc-go" href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" style={{ background: "var(--amberr)" }}>Verify a site →</a>
+                </div>
+              )}
               {gsc.connected && gsc.sites.length > 1 && (
                 <div className="rangebar" style={{ marginBottom: 12 }}>
                   <span className="rlabel">Property</span>
@@ -627,6 +639,8 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
                   <div className="an-h">How people found you</div>
                   {gscData ? (
                     <div className="an-s">Live · {displaySite(gscData.site)}</div>
+                  ) : gsc.connected && gsc.sites.length === 0 ? (
+                    <div className="an-s">Connected — no verified site, showing an estimate for {hostOf(url)}</div>
                   ) : gsc.connected ? (
                     <div className="an-s">Loading Search Console…</div>
                   ) : estimated ? (
