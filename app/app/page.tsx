@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadState, saveState, type Saved, type Profile, type Draft, type ChatMsg, type FeedEntry, type Ranking } from "@/lib/store";
-import { CHANNEL_LABELS, formatWindowLabel, type PublishChannel } from "@/lib/publish-times";
+import { CHANNEL_LABELS, formatWindowLabel, channelSchedule, type PublishChannel } from "@/lib/publish-times";
 import { matchGscSite, displaySite } from "@/lib/gsc-match";
 import { fetchPushStatus, subscribePush, unsubscribePush, type PushStatus } from "@/lib/push-client";
 
@@ -152,6 +152,7 @@ export default function AppPage() {
   const [gsc, setGsc] = useState<{ configured: boolean; connected: boolean; sites: string[] }>({ configured: false, connected: false, sites: [] });
   const [verifyPopup, setVerifyPopup] = useState(false);
   const verifyShownRef = useRef(false);
+  const [planOpen, setPlanOpen] = useState(false);
   const [gscData, setGscData] = useState<null | {
     site: string; impressions: string; clicks: string; ctr: string; position: string;
     deltas: { impressions: string; clicks: string; ctr: string; position: string };
@@ -537,6 +538,13 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
           </div>
           <div className="tb-r">
             <span className="credits">{cloud ? "cloud ✓" : "local"}</span>
+            {authUser && (
+              <button className="bell" onClick={() => setPlanOpen(true)} title="Today's posting plan">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3.5" y="4.5" width="17" height="16" rx="2.5" /><path d="M3.5 9h17M8 3v3M16 3v3" /><path d="M7.5 13h2M11 13h2M14.5 13h2M7.5 16.5h2M11 16.5h2" />
+                </svg>
+              </button>
+            )}
             {authUser && pushStatus?.configured && (
               <button
                 className={"bell" + (pushStatus.subscribed ? " on" : "")}
@@ -884,6 +892,51 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
           </div>
         </div>
       )}
+      {planOpen && (() => {
+        const sched = channelSchedule();
+        const chColor = (ch: string) => AGENTS.find((a) => a.id === ch)?.color || "#CDA6F2";
+        const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const today = new Date();
+        const week = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(today.getDate() + i); return d; });
+        const todayDow = today.getDay();
+        const todayChannels = sched.filter((s) => s.days.includes(todayDow)).sort((a, b) => a.startHour - b.startHour);
+        return (
+          <div className="authwrap" onClick={(e) => { if (e.target === e.currentTarget) setPlanOpen(false); }}>
+            <div className="plancard">
+              <div className="plan-head">
+                <div><strong>Content plan</strong><div className="plan-sub">What to post, at each channel&apos;s peak window</div></div>
+                <button className="xclose" onClick={() => setPlanOpen(false)}>✕</button>
+              </div>
+              <div className="plan-week">
+                {week.map((d, i) => {
+                  const chs = sched.filter((s) => s.days.includes(d.getDay()));
+                  return (
+                    <div className={"plan-day" + (i === 0 ? " today" : "")} key={i}>
+                      <div className="pd-dow">{DOW[d.getDay()]}</div>
+                      <div className="pd-num">{d.getDate()}</div>
+                      <div className="pd-dots">{chs.slice(0, 4).map((s) => <span key={s.channel} className="pd-dot" style={{ background: chColor(s.channel) }} />)}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="plan-today">Today · {today.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}</div>
+              {todayChannels.length ? todayChannels.map((s) => {
+                const item = feed[s.channel]?.items?.[0]?.[0];
+                return (
+                  <div className="plan-row" key={s.channel}>
+                    <span className="plan-ch" style={{ color: chColor(s.channel) }}>●</span>
+                    <div className="plan-info">
+                      <div className="plan-line"><b>{s.label}</b><span className="plan-win">{s.window}</span></div>
+                      <div className="plan-what">{item || `Draft a post for ${s.label}`}</div>
+                    </div>
+                    <button className="plan-go" onClick={() => { setPlanOpen(false); setMtab("agents"); setOpen((o) => ({ ...o, [s.channel]: true })); }}>Open</button>
+                  </div>
+                );
+              }) : <div className="plan-empty">Nothing peaks today — a good day to plan ahead.</div>}
+            </div>
+          </div>
+        );
+      })()}
       {authOpen && <AuthModal onClose={() => { if (!mustSignIn) setAuthOpen(false); }} forced={mustSignIn} />}
       {authUser && trial && !trial.active && (
         <div className="trial-lock">

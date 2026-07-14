@@ -130,6 +130,16 @@ export function formatWindowLabel(channel: PublishChannel): string {
   return `${CHANNEL_LABELS[channel]} · ${days} ${h(w.startHour)}–${h(w.endHour)}`;
 }
 
+/** Per-channel posting schedule (weekdays + a human time-window label) for the calendar UI. */
+export function channelSchedule(): { channel: PublishChannel; label: string; days: number[]; window: string; startHour: number }[] {
+  const h = (n: number) => { const ap = n >= 12 ? "pm" : "am"; return `${n % 12 || 12}${ap}`; };
+  return PUBLISH_CHANNELS.map((ch) => {
+    const w = DEFAULT_WINDOWS[ch][0];
+    const days = [...new Set(DEFAULT_WINDOWS[ch].flatMap((x) => x.days))].sort((a, b) => a - b);
+    return { channel: ch, label: CHANNEL_LABELS[ch], days, window: `${h(w.startHour)}–${h(w.endHour)}`, startHour: w.startHour };
+  });
+}
+
 /** Derive peak click hours (0-23) from GSC hour-of-day data. */
 export function peakHoursFromGsc(hourClicks: { hour: number; clicks: number }[]): number[] {
   if (!hourClicks.length) return [];
