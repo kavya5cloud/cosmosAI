@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getAccessToken, queryAnalytics, isoDaysAgo } from "@/lib/google";
 import { matchGscSite } from "@/lib/gsc-match";
+import { rateLimit, requestKey } from "@/lib/throttle";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,10 @@ type Row = { keys?: string[]; clicks: number; impressions: number; ctr: number; 
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
+  const limit = rateLimit(requestKey(req.headers, session?.userId), session ? 40 : 20, 60_000);
+  if (!limit.allowed) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429, headers: { "Retry-After": String(limit.retryAfter) } });
+  }
   const sql = db();
   if (!session || !sql) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
