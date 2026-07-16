@@ -45,7 +45,7 @@ function feedText(entry?: FeedEntry) {
 
 function feedLooksGeneric(entry?: FeedEntry) {
   const text = feedText(entry);
-  return !text || /cosmos(?:\.ai)?|poplr|short (?:thread angle|keyword or fix|ai-search gap|post idea|article title)|draft reply|fix gap|review|open/.test(text) || text.length < 30;
+  return !text || /cosmos(?:\.ai)?|populr|short (?:thread angle|keyword or fix|ai-search gap|post idea|article title)|draft reply|fix gap|review|open/.test(text) || text.length < 30;
 }
 
 function buildFallbackFeed(profile: Profile | null, url: string): Record<string, FeedEntry> {
@@ -219,7 +219,7 @@ const DOCS = [
 ];
 
 const TERM_LINES: [string, string][] = [
-  ["tl-p", "$ poplr run --daily"],
+  ["tl-p", "$ populr run --daily"],
   ["", "> [seo] crawling sitemap… 214 pages"],
   ["", "> [seo] scoring keyword gaps against 3 competitors…"],
   ["", "> [reddit] scanning 14 subreddits for buying intent…"],
@@ -277,8 +277,8 @@ const FALLBACK_RANKS: Ranking[] = [
 ];
 
 const DOC_DEMO: Record<string, string> = {
-  product: "# Product Information\n\nGenerated once Poplr analyzes your site with a live AI key.\nUntil then this is a placeholder describing your product, its core loop, and pricing.",
-  compet: "# Competitor Analysis\n\nYour top competitors and how Poplr positions against them appear here after analysis.",
+  product: "# Product Information\n\nGenerated once Populr analyzes your site with a live AI key.\nUntil then this is a placeholder describing your product, its core loop, and pricing.",
+  compet: "# Competitor Analysis\n\nYour top competitors and how Populr positions against them appear here after analysis.",
   voice: "# Brand Voice\n\nAdjectives, do's and don'ts, and a reference line — learned from your site.",
   strategy: "# Marketing Strategy\n\nObjective, channel pillars, and weekly cadence — drafted from your positioning.",
   llms: "# llms.txt\n\nGenerated for AI crawlers so ChatGPT / Perplexity cite you correctly.",
@@ -517,7 +517,7 @@ export default function AppPage() {
     let i = 0; let timer: ReturnType<typeof setTimeout>;
     const next = () => {
       if (!tlogRef.current) return;
-      if (i >= TERM_LINES.length) { el.insertAdjacentHTML("beforeend", '<div><span class="tl-p">poplr@ai:~$</span> <span style="display:inline-block;width:7px;height:12px;background:var(--fg);vertical-align:-2px"></span></div>'); el.scrollTop = el.scrollHeight; return; }
+      if (i >= TERM_LINES.length) { el.insertAdjacentHTML("beforeend", '<div><span class="tl-p">populr@ai:~$</span> <span style="display:inline-block;width:7px;height:12px;background:var(--fg);vertical-align:-2px"></span></div>'); el.scrollTop = el.scrollHeight; return; }
       const [c, t] = TERM_LINES[i++];
       el.insertAdjacentHTML("beforeend", `<div class="${c}">${esc(t)}</div>`); el.scrollTop = el.scrollHeight;
       timer = setTimeout(next, 240 + Math.random() * 260);
@@ -558,8 +558,8 @@ export default function AppPage() {
       // Phase 2: generate a company-specific agents feed + rankings, and (separately) an
       // estimated-traffic figure. Kept as two calls so a failure in one can't break the other.
       const insP = ai(
-        `You are Poplr, an AI CMO for ${p.name} — ${p.oneLiner}. Audience: ${p.audience}. Competitors: ${(p.competitors || []).join(", ")}.
-Output ONLY compact valid JSON (no markdown, no prose). Each item's first string is a specific, descriptive opportunity in 6-12 words. Do not mention Poplr unless the analyzed site is Poplr. Exactly this shape:
+        `You are Populr, an AI CMO for ${p.name} — ${p.oneLiner}. Audience: ${p.audience}. Competitors: ${(p.competitors || []).join(", ")}.
+Output ONLY compact valid JSON (no markdown, no prose). Each item's first string is a specific, descriptive opportunity in 6-12 words. Do not mention Populr unless the analyzed site is Populr. Exactly this shape:
 {"feed":{"reddit":{"summary":"36 opportunities ready","items":[["short thread angle","Draft reply"]]},"seo":{"summary":"46 recommendations","items":[["short keyword or fix","Draft post"]]},"geo":{"summary":"11 citation gaps","items":[["short AI-search gap","Fix gap"]]},"x":{"summary":"137 ideas","items":[["short post idea","Draft"]]},"linkedin":{"summary":"3 posts ready","items":[["short post idea","Review"]]},"articles":{"summary":"32 topics ready","items":[["short article title","Open"]]}},"rankings":[{"pos":"#3","query":"short query","trend":"↑2"}]}
 Give exactly 2 items per channel and 4 rankings, all specific to ${p.name}. Keep it short so the JSON is complete.`
       ).then((t) => {
@@ -604,15 +604,15 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
       const voice = profile?.voice || "clear, practical, specific";
       const context = `Website: ${url || "unknown"}\nBrand: ${brand}\nSummary: ${oneLiner}\nVoice: ${voice}`;
       const channelBrief: Record<string, string> = {
-        hn: `Write a Show HN launch post for ${brand}. Use the brand name ${brand}, never Poplr, unless ${brand} itself is Poplr. State a concrete problem, how the product works, technical or product decisions, and honest limitations. Avoid hype, marketing clichés, and unsupported claims.`,
-        linkedin: `Write a polished LinkedIn post for a founder or operator at ${brand}. Use the brand name ${brand}, never Poplr, unless ${brand} itself is Poplr. Start with a specific insight, support it with a concrete example, and end without a hard sell.`,
+        hn: `Write a Show HN launch post for ${brand}. Use the brand name ${brand}, never Populr, unless ${brand} itself is Populr. State a concrete problem, how the product works, technical or product decisions, and honest limitations. Avoid hype, marketing clichés, and unsupported claims.`,
+        linkedin: `Write a polished LinkedIn post for a founder or operator at ${brand}. Use the brand name ${brand}, never Populr, unless ${brand} itself is Populr. Start with a specific insight, support it with a concrete example, and end without a hard sell.`,
         reddit: `Write a high-signal Reddit reply or post for ${brand}. Sound helpful, specific, and non-promotional.`,
         x: `Write a concise X post or thread starter for ${brand}.`,
         seo: `Write an SEO deliverable for ${brand}.`,
         geo: `Write an AI-search / GEO deliverable for ${brand}.`,
         articles: `Write a long-form article brief or outline for ${brand}.`,
       };
-      body = await ai(`You are the ${agentName} inside Poplr.\n${context}\n${channelBrief[agentId] || ""}\nWork item: ${item}\nProduce the complete, ready-to-use deliverable. No preamble — just the deliverable.`);
+      body = await ai(`You are the ${agentName} inside Populr.\n${context}\n${channelBrief[agentId] || ""}\nWork item: ${item}\nProduce the complete, ready-to-use deliverable. No preamble — just the deliverable.`);
       setDemo(false);
     } catch {
       body = `[demo draft — no AI key/quota]\n\n${agentName} · deliverable for:\n"${item}"\n\nAdd a working key for a real draft.`;
@@ -629,7 +629,7 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
     if (!profile || demo) { setDoc({ title: name, body: DOC_DEMO[id] || "—" }); return; }
     setDoc({ title: name, body: "…generating…" });
     try {
-      const body = await ai(`You are Poplr, the AI CMO for ${profile.name} (${profile.oneLiner}). Voice: ${profile.voice}. Audience: ${profile.audience}.\nWrite the document "${name}" for this company. Be specific and practical. Use plain text with short sections. No preamble.`);
+      const body = await ai(`You are Populr, the AI CMO for ${profile.name} (${profile.oneLiner}). Voice: ${profile.voice}. Audience: ${profile.audience}.\nWrite the document "${name}" for this company. Be specific and practical. Use plain text with short sections. No preamble.`);
       setDocCache((c) => ({ ...c, [id]: body }));
       setDoc({ title: name, body });
     } catch {
@@ -754,9 +754,9 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
         <div className="onboard">
           <canvas className="dots" ref={dotsRef} aria-hidden="true" />
           <div className="ob-in">
-            <span className="app-wordmark app-wordmark-lg">Poplr.</span>
+            <span className="app-wordmark app-wordmark-lg">Populr.</span>
             <h1>What are we growing?</h1>
-            <p className="s">Paste your website. Poplr reads it, figures out your positioning, and builds today&apos;s plan.</p>
+            <p className="s">Paste your website. Populr reads it, figures out your positioning, and builds today&apos;s plan.</p>
             <div className="urlbox">
               <input value={inputUrl} onChange={(e) => setInputUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && analyze()} type="url" placeholder="https://yourcompany.com" autoComplete="off" spellCheck={false} />
               <button className="go" onClick={analyze} disabled={progress >= 0}>Analyze →</button>
@@ -783,7 +783,7 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
       <div className={"appshell" + (termCollapsed ? " term-collapsed" : "")}>
         <div className="topbar">
           <div className="tb-l">
-            <span className="app-wordmark">Poplr.</span>
+            <span className="app-wordmark">Populr.</span>
             <span className="sep">·</span>
             <span className="mono" style={{ fontSize: 11, color: "var(--dim)" }}>AI CMO Terminal · running daily</span>
           </div>
@@ -857,7 +857,7 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
               <div className="sect">
                 <span className="label">Competitors</span>
                 <p className="company-desc" style={{ marginBottom: 10 }}>
-                  These names drive comparison pages, objection handling, and positioning. Poplr keeps them tied to the current website instead of reusing stale defaults.
+                  These names drive comparison pages, objection handling, and positioning. Populr keeps them tied to the current website instead of reusing stale defaults.
                 </p>
                 {competitors.length ? competitors.map((c) => (
                   <div className="comp-row" key={c.n}>
@@ -1149,9 +1149,9 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
       {mustSignIn && !authOpen && (
         <div className="trial-lock">
           <div className="trial-lock-card">
-            <span className="app-wordmark app-wordmark-lg">Poplr.</span>
+            <span className="app-wordmark app-wordmark-lg">Populr.</span>
             <h2>Sign in to continue</h2>
-            <p>Create a free account to save your analysis and keep using Poplr. Your work carries over.</p>
+            <p>Create a free account to save your analysis and keep using Populr. Your work carries over.</p>
             <button className="acct-btn pri" style={{ marginTop: 18 }} onClick={() => setAuthOpen(true)}>Sign in / Create account</button>
           </div>
         </div>
@@ -1218,7 +1218,7 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
       {authUser && liveTrial && !liveTrial.active && (
         <div className="trial-lock">
           <div className="trial-lock-card">
-            <span className="app-wordmark app-wordmark-lg">Poplr.</span>
+            <span className="app-wordmark app-wordmark-lg">Populr.</span>
             <h2>Your free month has ended</h2>
             <p>Upgrade to keep your AI CMO running. Your workspace, drafts, and connections are safe.</p>
             <button className="acct-btn pri" style={{ marginTop: 18 }} disabled title="Billing coming soon">Upgrade — $15/mo</button>
@@ -1308,7 +1308,7 @@ function AuthModal({ onClose, forced }: { onClose: () => void; forced?: boolean 
       <div className="authcard">
         {!forced && <button className="xclose" onClick={onClose}>✕</button>}
         <h3>{mode === "signup" ? "Create your account" : "Welcome back"}</h3>
-        <div className="authsub">{mode === "signup" ? "Save your workspace across devices." : "Sign in to your Poplr workspace."}</div>
+        <div className="authsub">{mode === "signup" ? "Save your workspace across devices." : "Sign in to your Populr workspace."}</div>
         <label>Email</label>
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="you@company.com" autoComplete="email" />
         <label>Password</label>

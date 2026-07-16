@@ -34,7 +34,7 @@ const AGENT_DETAILS: Record<string, string> = {
 };
 
 const TERM_LINES = [
-  { t: "$ poplr run --daily", cls: "p", d: 24 },
+  { t: "$ populr run --daily", cls: "p", d: 24 },
   { t: "scanning: site, ga4, search-console … done", cls: "c", d: 10 },
   { t: 'skip  write 4 articles for "best crm"   # won\'t rank', cls: "skip", d: 10 },
   { t: "skip  daily linkedin posts              # buyers aren't there", cls: "skip", d: 10 },
@@ -120,7 +120,7 @@ export default function Landing() {
     <div className="landing">
       <nav>
         <div className="nav-in">
-          <a href="/" className="logo" aria-label="Poplr home">Poplr.</a>
+          <a href="/" className="logo" aria-label="Populr home">Populr.</a>
           <div className="nav-r">
             <a href="#how">How it works</a>
             <a href="#pricing">Pricing</a>
@@ -133,15 +133,15 @@ export default function Landing() {
         <canvas className="dots" ref={dotsRef} aria-hidden="true" />
         <div className="wrap" style={{ position: "relative", zIndex: 2 }}>
           <span className="pill"><i />now in early access</span>
-          <h1>Meet <span className="name">Poplr.</span><br /><span className="headline-tail">Your AI CMO.</span></h1>
-          <p className="sub">Paste your URL. Poplr learns your product, runs SEO, AI search, Reddit and content daily — and only pings you for what actually moves your numbers.</p>
+          <h1>Meet <span className="name">Populr.</span><br /><span className="headline-tail">Your AI CMO.</span></h1>
+          <p className="sub">Paste your URL. Populr learns your product, runs SEO, AI search, Reddit and content daily — and only pings you for what actually moves your numbers.</p>
           <div className="cta-row">
             <a href="/app" className="btn btn-lg">Try free for a month</a>
             <a href="#how" className="btn btn-lg btn-ghost">See how it works</a>
           </div>
           <p className="under">no card · no setup · one URL</p>
-          <div className="term" role="img" aria-label="Terminal showing Poplr skipping low-value tasks">
-            <div className="term-bar"><b /><b /><b /><span>poplr · daily run</span></div>
+          <div className="term" role="img" aria-label="Terminal showing Populr skipping low-value tasks">
+            <div className="term-bar"><b /><b /><b /><span>populr · daily run</span></div>
             <div className="term-body" ref={termRef} />
           </div>
         </div>
@@ -153,9 +153,9 @@ export default function Landing() {
           <h2 style={{ marginTop: 14 }}>Three steps. No dashboard babysitting.</h2>
           <div className="grid">
             {[
-              ["01", "Connect", "One URL. Poplr reads your site, GA4, and Search Console to learn what your business actually is and where revenue comes from."],
+              ["01", "Connect", "One URL. Populr reads your site, GA4, and Search Console to learn what your business actually is and where revenue comes from."],
               ["02", "Run", "Agents work every channel daily — SEO, AI-search visibility, Reddit, content. Everything drafts in the background."],
-              ["03", "Approve", "Poplr skips low-value work with a reason attached and sends you the few things worth doing. Nothing ships without you."],
+              ["03", "Approve", "Populr skips low-value work with a reason attached and sends you the few things worth doing. Nothing ships without you."],
             ].map(([n, h, p]) => (
               <div className="cell" key={n}>
                 <span className="label" style={{ color: "var(--green)" }}>{n}</span>
@@ -212,9 +212,9 @@ export default function Landing() {
       <section id="compare">
         <div className="wrap">
           <p className="label">The math</p>
-          <h2 style={{ marginTop: 14 }}>What Poplr replaces vs. what it costs.</h2>
+          <h2 style={{ marginTop: 14 }}>What Populr replaces vs. what it costs.</h2>
           <div className="cmp">
-            <div className="cmp-row cmp-head"><span>What needs doing</span><span>Hiring it out</span><span className="hi">With Poplr</span></div>
+            <div className="cmp-row cmp-head"><span>What needs doing</span><span>Hiring it out</span><span className="hi">With Populr</span></div>
             {[
               ["Marketing generalist", "$5,000/mo"], ["SEO agency", "$4,000/mo"], ["Content writer", "$1,500/mo"],
               ["Social media manager", "$1,500/mo"], ["Community & Reddit growth", "$1,000/mo"],
@@ -244,7 +244,7 @@ export default function Landing() {
 
       <footer>
         <div className="wrap" style={{ display: "flex", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: 10 }}>
-          <a href="/" className="footer-logo" aria-label="Poplr home">Poplr.</a>
+          <a href="/" className="footer-logo" aria-label="Populr home">Populr.</a>
           <span style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <a href="#how" style={{ color: "var(--faint)", textDecoration: "none" }}>how it works</a>
             <a href="#pricing" style={{ color: "var(--faint)", textDecoration: "none" }}>pricing</a>

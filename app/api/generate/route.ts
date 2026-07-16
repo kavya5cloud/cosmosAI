@@ -37,7 +37,7 @@ async function fetchSiteText(url: string, cap = 6000): Promise<string | null> {
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), 10000);
     const r = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (Poplr analyzer)" },
+      headers: { "User-Agent": "Mozilla/5.0 (Populr analyzer)" },
       signal: controller.signal,
     });
     clearTimeout(t);
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
       headers: {
         "Content-Type": "application/json",
         Authorization: "Bearer " + key,
-        "User-Agent": "poplr/1.0",
+        "User-Agent": "populr/1.0",
       },
       signal: controller.signal,
       body: JSON.stringify({

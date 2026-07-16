@@ -1,23 +1,23 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Poplr",
-  description: "How Poplr collects, uses, and protects your data.",
+  title: "Privacy Policy — Populr",
+  description: "How Populr collects, uses, and protects your data.",
 };
 
 export default function Privacy() {
   return (
     <div className="legal">
       <div className="legal-top">
-        <a href="/">← Poplr</a>
-        <span className="legal-wordmark">Poplr.</span>
+        <a href="/">← Populr</a>
+        <span className="legal-wordmark">Populr.</span>
       </div>
 
       <h1>Privacy Policy</h1>
       <div className="updated">Last updated: 13 July 2026</div>
 
       <p>
-        This Privacy Policy explains how Poplr (&quot;Poplr&quot;, &quot;we&quot;, &quot;us&quot;) collects, uses, and protects
+        This Privacy Policy explains how Populr (&quot;Populr&quot;, &quot;we&quot;, &quot;us&quot;) collects, uses, and protects
         information when you use our website and application (the &quot;Service&quot;). By using the Service you agree to
         this policy.
       </p>
@@ -39,7 +39,7 @@ export default function Privacy() {
 
       <h2>3. Google API Services User Data</h2>
       <p>
-        Poplr&apos;s use and transfer of information received from Google APIs adheres to the{" "}
+        Populr&apos;s use and transfer of information received from Google APIs adheres to the{" "}
         <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer">
           Google API Services User Data Policy
         </a>

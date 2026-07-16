@@ -1,29 +1,29 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Poplr",
-  description: "The terms that govern your use of Poplr.",
+  title: "Terms of Service — Populr",
+  description: "The terms that govern your use of Populr.",
 };
 
 export default function Terms() {
   return (
     <div className="legal">
       <div className="legal-top">
-        <a href="/">← Poplr</a>
-        <span className="legal-wordmark">Poplr.</span>
+        <a href="/">← Populr</a>
+        <span className="legal-wordmark">Populr.</span>
       </div>
 
       <h1>Terms of Service</h1>
       <div className="updated">Last updated: 13 July 2026</div>
 
       <p>
-        These Terms of Service (&quot;Terms&quot;) govern your access to and use of Poplr (the &quot;Service&quot;).
+        These Terms of Service (&quot;Terms&quot;) govern your access to and use of Populr (the &quot;Service&quot;).
         By creating an account or using the Service, you agree to these Terms.
       </p>
 
       <h2>1. The Service</h2>
       <p>
-        Poplr is an AI marketing assistant that analyzes a website you provide, generates marketing recommendations and
+        Populr is an AI marketing assistant that analyzes a website you provide, generates marketing recommendations and
         drafts, and can display analytics from integrations you connect. Every output is provided for your review — nothing
         is published on your behalf without your action.
       </p>
@@ -76,7 +76,7 @@ export default function Terms() {
 
       <h2>9. Limitation of liability</h2>
       <p>
-        To the fullest extent permitted by law, Poplr will not be liable for any indirect, incidental, or consequential
+        To the fullest extent permitted by law, Populr will not be liable for any indirect, incidental, or consequential
         damages, or for lost profits or data, arising from your use of the Service.
       </p>
 

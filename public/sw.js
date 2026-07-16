@@ -1,7 +1,7 @@
-/* Poplr web push service worker */
+/* Populr web push service worker */
 
 self.addEventListener("push", (event) => {
-  let data = { title: "Poplr", body: "Time to publish", url: "/app", tag: "poplr" };
+  let data = { title: "Populr", body: "Time to publish", url: "/app", tag: "populr" };
   try {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch {
@@ -12,7 +12,7 @@ self.addEventListener("push", (event) => {
       body: data.body,
       icon: "/logo.png",
       badge: "/logo.png",
-      tag: data.tag || "poplr",
+      tag: data.tag || "populr",
       data: { url: data.url || "/app" },
     })
   );
