@@ -2,7 +2,7 @@
 
 An AI CMO for teams that ship — it runs your marketing, skips the busywork, and only surfaces what actually moves your numbers.
 
-Now a **Next.js** app with real AI (Groq/OpenAI) and persistence.
+Now a **Next.js** app with real AI (Groq/Gemini/OpenAI) and persistence.
      
 ## Run locally
 
@@ -20,8 +20,9 @@ npm run dev
 | Var | What it does |
 |-----|--------------|
 | `GROQ_API_KEY` | Free AI provider (default). Get one at console.groq.com |
+| `GEMINI_API_KEY` | Optional Gemini fallback provider |
 | `OPENAI_API_KEY` | Optional fallback provider |
-| `GROQ_MODEL` / `OPENAI_MODEL` | Override the model |
+| `GROQ_MODEL` / `GEMINI_MODEL` / `OPENAI_MODEL` | Override the model |
 | `DATABASE_URL` | Optional Neon Postgres connection string for cloud persistence |
 
 The app degrades gracefully:
