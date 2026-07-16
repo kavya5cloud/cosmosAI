@@ -7,11 +7,13 @@ import { isSafePublicUrl, rateLimit, requestKey } from "@/lib/throttle";
 export const runtime = "nodejs";
 
 type ProviderConfig = {
-  name: "groq" | "openai";
-  env: "GROQ_API_KEY" | "OPENAI_API_KEY";
+  name: "groq" | "gemini" | "openai";
+  env: "GROQ_API_KEY" | "GEMINI_API_KEY" | "OPENAI_API_KEY";
   prefix: string;
   url: string;
   model: string;
+  authHeader: "Authorization" | "x-goog-api-key";
+  kind: "openai_compatible" | "gemini";
 };
 
 type LLMAttempt = {
@@ -33,6 +35,17 @@ const PROVIDERS: ProviderConfig[] = [
     prefix: "gsk_",
     url: "https://api.groq.com/openai/v1/chat/completions",
     model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+    authHeader: "Authorization",
+    kind: "openai_compatible",
+  },
+  {
+    name: "gemini",
+    env: "GEMINI_API_KEY",
+    prefix: "",
+    url: "https://generativelanguage.googleapis.com/v1beta/interactions",
+    model: process.env.GEMINI_MODEL || "gemini-3.5-flash",
+    authHeader: "x-goog-api-key",
+    kind: "gemini",
   },
   {
     name: "openai",
@@ -40,6 +53,8 @@ const PROVIDERS: ProviderConfig[] = [
     prefix: "sk-",
     url: "https://api.openai.com/v1/chat/completions",
     model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+    authHeader: "Authorization",
+    kind: "openai_compatible",
   },
 ];
 
@@ -47,10 +62,16 @@ function envValue(name: ProviderConfig["env"]) {
   return (process.env[name] || "").trim();
 }
 
+function providerHasValidKey(provider: ProviderConfig, key: string) {
+  if (!key) return false;
+  if (!provider.prefix) return true;
+  return key.startsWith(provider.prefix);
+}
+
 function activeProvider() {
   for (const p of PROVIDERS) {
     const key = envValue(p.env);
-    if (key) return { provider: p, key };
+    if (providerHasValidKey(p, key)) return { provider: p, key };
   }
   return { provider: null, key: "" };
 }
@@ -107,7 +128,7 @@ async function callProvider(provider: ProviderConfig, key: string, prompt: strin
     provider: provider.name,
     model: provider.model,
     envLoaded: true,
-    keyPrefixMatch: key.startsWith(provider.prefix),
+    keyPrefixMatch: provider.prefix ? key.startsWith(provider.prefix) : true,
     retried,
     appUrlConfigured: Boolean(process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL),
   });
@@ -115,19 +136,27 @@ async function callProvider(provider: ProviderConfig, key: string, prompt: strin
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 45_000);
   try {
+    const requestBody =
+      provider.kind === "gemini"
+        ? JSON.stringify({
+            model: provider.model,
+            input: prompt,
+            generation_config: { temperature: 0.7 },
+          })
+        : JSON.stringify({
+            model: provider.model,
+            messages: [{ role: "user", content: prompt }],
+            max_tokens: 2048,
+          });
     const response = await fetch(provider.url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Bearer " + key,
+        [provider.authHeader]: provider.authHeader === "Authorization" ? "Bearer " + key : key,
         "User-Agent": "populr/1.0",
       },
       signal: controller.signal,
-      body: JSON.stringify({
-        model: provider.model,
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 2048,
-      }),
+      body: requestBody,
     });
     const body = await response.text();
     const elapsedMs = Date.now() - started;
@@ -150,7 +179,17 @@ async function callProvider(provider: ProviderConfig, key: string, prompt: strin
     }
 
     const parsed = safeJson(body);
-    const text = parsed?.choices?.[0]?.message?.content;
+    const text =
+      provider.kind === "gemini"
+        ? (typeof parsed?.output_text === "string"
+            ? parsed.output_text
+            : Array.isArray(parsed?.steps)
+              ? parsed.steps
+                  .flatMap((step: any) => Array.isArray(step?.content) ? step.content : [])
+                  .reverse()
+                  .find((part: any) => typeof part?.text === "string")?.text
+              : null)
+        : parsed?.choices?.[0]?.message?.content;
     if (typeof text !== "string") {
       const invalidKind = "invalid_json";
       logEvent("llm_generate_failure", {
@@ -255,13 +294,13 @@ export async function POST(req: NextRequest) {
   }
 
   const { provider, key } = activeProvider();
-  const openai = PROVIDERS[1];
   const openaiKey = envValue("OPENAI_API_KEY");
   logEvent("llm_generate_request", {
     requestId,
     route: "/api/generate",
     appUrlConfigured: Boolean(process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL),
     groqKeyLoaded: Boolean(envValue("GROQ_API_KEY")),
+    geminiKeyLoaded: Boolean(envValue("GEMINI_API_KEY")),
     openaiKeyLoaded: Boolean(openaiKey),
     selectedProvider: provider?.name || null,
     selectedModel: provider?.model || null,
@@ -269,7 +308,7 @@ export async function POST(req: NextRequest) {
 
   if (!provider) {
     return NextResponse.json(
-      { error: "no_api_key", hint: "set GROQ_API_KEY in .env.local (free key at console.groq.com)" },
+      { error: "no_api_key", hint: "set GROQ_API_KEY, GEMINI_API_KEY, or OPENAI_API_KEY in .env.local" },
       { status: 503 }
     );
   }
@@ -301,7 +340,7 @@ export async function POST(req: NextRequest) {
   }
 
   const primaryAttempt = primary.attempt;
-  if (provider.name === "groq" && primaryAttempt.status === 429) {
+  if (primaryAttempt.status === 429) {
     await sleep(2000);
     const retry = await callProvider(provider, key, prompt, requestId, true);
     if (retry.ok) {
@@ -316,56 +355,63 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ text: retry.text, provider: provider.name });
     }
 
-    const retryAttempt = retry.attempt;
-    if (openaiKey) {
+    let fallbackAttempt = retry.attempt;
+    const remainingProviders = PROVIDERS.slice(PROVIDERS.findIndex((p) => p.name === provider.name) + 1);
+    for (const nextProvider of remainingProviders) {
+      const nextKey = envValue(nextProvider.env);
+      if (!providerHasValidKey(nextProvider, nextKey)) continue;
       logEvent("llm_generate_fallback", {
         requestId,
         fromProvider: provider.name,
-        toProvider: openai.name,
-        fromStatus: retryAttempt.status,
-        fromKind: retryAttempt.kind,
+        toProvider: nextProvider.name,
+        fromStatus: fallbackAttempt.status,
+        fromKind: fallbackAttempt.kind,
         elapsedMs: Date.now() - started,
       });
-      const openaiResult = await callProvider(openai, openaiKey, prompt, requestId);
-      if (openaiResult.ok) {
+      const nextResult = await callProvider(nextProvider, nextKey, prompt, requestId);
+      if (nextResult.ok) {
         logEvent("llm_generate_complete", {
           requestId,
-          provider: openai.name,
-          model: openai.model,
+          provider: nextProvider.name,
+          model: nextProvider.model,
           status: 200,
           elapsedMs: Date.now() - started,
-          fallbackFrom: "groq",
+          fallbackFrom: provider.name,
         });
-        return NextResponse.json({ text: openaiResult.text, provider: openai.name });
+        return NextResponse.json({ text: nextResult.text, provider: nextProvider.name });
       }
-
-      const fallbackAttempt = openaiResult.attempt;
-      return NextResponse.json(
-        {
-          error: "llm_error",
-          provider: fallbackAttempt.provider,
-          model: fallbackAttempt.model,
-          status: fallbackAttempt.status,
-          kind: fallbackAttempt.kind,
-          detail: fallbackAttempt.body,
-          fallbackFrom: "groq",
-          primary: primaryAttempt,
-        },
-        { status: statusForKind(fallbackAttempt.kind) }
-      );
+      if (nextResult.attempt.status === 429) {
+        await sleep(2000);
+        const retriedNext = await callProvider(nextProvider, nextKey, prompt, requestId, true);
+        if (retriedNext.ok) {
+          logEvent("llm_generate_complete", {
+            requestId,
+            provider: nextProvider.name,
+            model: nextProvider.model,
+            status: 200,
+            elapsedMs: Date.now() - started,
+            fallbackFrom: provider.name,
+            retried: true,
+          });
+          return NextResponse.json({ text: retriedNext.text, provider: nextProvider.name });
+        }
+        fallbackAttempt = retriedNext.attempt;
+      } else {
+        fallbackAttempt = nextResult.attempt;
+      }
     }
 
     return NextResponse.json(
       {
         error: "llm_error",
-        provider: retryAttempt.provider,
-        model: retryAttempt.model,
-        status: retryAttempt.status,
-        kind: retryAttempt.kind,
-        detail: retryAttempt.body,
+        provider: fallbackAttempt.provider,
+        model: fallbackAttempt.model,
+        status: fallbackAttempt.status,
+        kind: fallbackAttempt.kind,
+        detail: fallbackAttempt.body,
         primary: primaryAttempt,
       },
-      { status: statusForKind(retryAttempt.kind) }
+      { status: statusForKind(fallbackAttempt.kind) }
     );
   }
 
