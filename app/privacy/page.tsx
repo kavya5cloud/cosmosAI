@@ -92,11 +92,6 @@ export default function Privacy() {
       <h2>10. Contact</h2>
       <p>Questions about this policy? Email <a href="mailto:team@trypopulr.in">team@trypopulr.in</a>.</p>
 
-      <div className="note">
-        This document is a good-faith template for an early-stage product and is not legal advice. Have it reviewed by a
-        qualified professional before relying on it for a commercial launch.
-      </div>
-
       <div className="legal-foot">
         <a href="/">Home</a>
         <a href="/terms">Terms of Service</a>
