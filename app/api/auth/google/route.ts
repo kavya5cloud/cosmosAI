@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { baseUrl } from "@/lib/base-url";
 
 export const runtime = "nodejs";
 
@@ -8,7 +9,7 @@ function configured() {
 }
 
 export async function GET(req: NextRequest) {
-  const origin = req.nextUrl.origin;
+  const origin = baseUrl(req);
   if (!configured()) return NextResponse.redirect(origin + "/app?auth=unavailable");
 
   const state = crypto.randomUUID();

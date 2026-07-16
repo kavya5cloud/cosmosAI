@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { db, ensureSchema } from "@/lib/db";
 import { createSession } from "@/lib/auth";
+import { baseUrl } from "@/lib/base-url";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const origin = req.nextUrl.origin;
+  const origin = baseUrl(req);
   const sql = db();
   const code = req.nextUrl.searchParams.get("code");
   const state = req.nextUrl.searchParams.get("state");
