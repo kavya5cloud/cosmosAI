@@ -754,19 +754,24 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
     setChatInput(""); setChat((c) => [...c, { who: "me", text: q }]); setTyping(true);
     let reply: string;
     try {
-      const prompt = buildChatPrompt({
-        profile,
-        url,
-        competitors,
-        feed,
-        rankings,
-        drafts,
-        estTraffic,
-        gscData,
-        recentTurns: chat,
-        question: q,
-        mode: chatMode,
-      });
+      // Decide-first: the server assembles the business state graph (missions, decision
+      // ranking, what actually worked, rejections, live metrics) into a CMO reasoning
+      // prompt. Fall back to the local client prompt only if that pipeline is unavailable.
+      const recentTurns = chat.slice(-6).map((m) => `${m.who === "me" ? "Founder" : "CMO"}: ${m.text}`).join("\n");
+      let prompt: string | null = null;
+      try {
+        const r = await fetch("/api/cmo/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ wsid: workspaceId(), url, profile, question: q, mode: chatMode, recentTurns }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.prompt) prompt = d.prompt as string;
+      } catch { /* fall back below */ }
+
+      if (!prompt) {
+        prompt = buildChatPrompt({ profile, url, competitors, feed, rankings, drafts, estTraffic, gscData, recentTurns: chat, question: q, mode: chatMode });
+      }
       reply = await ai(prompt, url);
       setDemo(false);
     } catch (e) {
