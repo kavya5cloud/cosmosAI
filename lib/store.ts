@@ -23,7 +23,7 @@ export type Draft = {
    *  approve/publish events can never mislink after a re-analysis replaces the map. */
   recId?: string;
 };
-export type ChatMsg = { who: "ai" | "me"; text: string };
+export type ChatMsg = { who: "ai" | "me"; text: string; intent?: string };
 export type FeedEntry = { summary: string; items: [string, string][] };
 export type Ranking = { pos: string; query: string; trend: string };
 

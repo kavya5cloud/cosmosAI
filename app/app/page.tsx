@@ -753,20 +753,22 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
     const q = chatInput.trim(); if (!q) return;
     setChatInput(""); setChat((c) => [...c, { who: "me", text: q }]); setTyping(true);
     let reply: string;
+    let intent = "strategy";
     try {
-      // Decide-first: the server assembles the business state graph (missions, decision
-      // ranking, what actually worked, rejections, live metrics) into a CMO reasoning
-      // prompt. Fall back to the local client prompt only if that pipeline is unavailable.
+      // Intent-first: the server classifies the request (content/edit/transform/analysis/
+      // campaign/strategy) BEFORE any LLM, assembles the shared Business State, and returns
+      // the matching engine's prompt. Content asks get bare deliverables, not strategy memos.
       const recentTurns = chat.slice(-6).map((m) => `${m.who === "me" ? "Founder" : "CMO"}: ${m.text}`).join("\n");
+      const lastAi = [...chat].reverse().find((m) => m.who === "ai")?.text || "";
       let prompt: string | null = null;
       try {
         const r = await fetch("/api/cmo/ask", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ wsid: workspaceId(), url, profile, question: q, mode: chatMode, recentTurns }),
+          body: JSON.stringify({ wsid: workspaceId(), url, profile, question: q, recentTurns, source: lastAi, hasSelection: !!lastAi }),
         });
         const d = await r.json().catch(() => ({}));
-        if (r.ok && d.prompt) prompt = d.prompt as string;
+        if (r.ok && d.prompt) { prompt = d.prompt as string; intent = d.intent || "strategy"; }
       } catch { /* fall back below */ }
 
       if (!prompt) {
@@ -777,7 +779,7 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
     } catch (e) {
       reply = `AI request failed: ${aiErrorText(e).slice(0, 200)}`;
     }
-    setTyping(false); setChat((c) => [...c, { who: "ai", text: reply }]);
+    setTyping(false); setChat((c) => [...c, { who: "ai", text: reply, intent }]);
   }
 
   function reset() {
@@ -1270,12 +1272,23 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
                   <button key={s} type="button" className="chat-chip" onClick={() => setChatInput(s)}>{s}</button>
                 ))}
               </div>
-              {chat.map((m, i) => (
-                <div key={i} style={{ display: "contents" }}>
-                  <span className={"msg-meta" + (m.who === "me" ? " me" : "")}>{m.who === "me" ? "you" : "AI CMO"}</span>
-                  <div className={"msg " + m.who}>{m.text}</div>
-                </div>
-              ))}
+              {chat.map((m, i) => {
+                const isContent = m.who === "ai" && ["content", "edit", "transform"].includes(m.intent || "");
+                const label = m.who === "me" ? "you" : isContent ? "deliverable" : "AI CMO";
+                return (
+                  <div key={i} style={{ display: "contents" }}>
+                    <span className={"msg-meta" + (m.who === "me" ? " me" : "")}>{label}</span>
+                    <div className={"msg " + m.who + (isContent ? " deliverable" : "")}>
+                      {m.text}
+                      {m.who === "ai" && (
+                        <div className="msg-actions">
+                          <button onClick={() => { navigator.clipboard?.writeText(m.text).then(() => showToast("Copied")); }}>Copy</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
               {typing && <span className="typing">AI CMO is thinking…</span>}
             </div>
             <div className="chat-foot">

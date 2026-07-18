@@ -802,3 +802,9 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 .eaa-actions button:hover:not(:disabled){border-color:var(--dim);color:var(--fg)}
 .eaa-actions button:disabled{opacity:.35;cursor:default}
 @media(max-width:640px){.eaa-top h1{font-size:22px}}
+
+/* chat deliverable (content-intent) messages + copy action */
+.appui .msg.deliverable{background:var(--panel2);border-color:rgba(213,255,114,.22);color:var(--fg);font-family:'Geist Mono',monospace;font-size:12px;line-height:1.7}
+.appui .msg-actions{display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.appui .msg-actions button{font-family:'Geist Mono',monospace;font-size:10.5px;color:var(--dim);background:transparent;border:1px solid var(--line);border-radius:6px;padding:4px 9px}
+.appui .msg-actions button:hover{color:var(--acc);border-color:rgba(213,255,114,.35)}
