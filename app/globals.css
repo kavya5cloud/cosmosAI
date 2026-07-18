@@ -118,8 +118,8 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
   .landing .nav-r{gap:0}
   .landing .nav-in{height:60px;padding:0 16px}
   .landing .logo{font-size:19px}
-  .landing .btn{padding:9px 13px;font-size:13px;gap:7px;border-radius:9px;box-shadow:0 6px 16px rgba(190,255,99,.12),inset 0 1px rgba(255,255,255,.5)}
-  .landing .btn .kbd{font-size:10px;padding:2px 6px}
+  .landing .btn{padding:9px 13px;font-size:11px;gap:7px;border-radius:9px;box-shadow:0 6px 16px rgba(190,255,99,.12),inset 0 1px rgba(255,255,255,.5)}
+  .landing .btn .kbd{font-size:8.5px;padding:2px 6px}
 }
 @media(prefers-reduced-motion:reduce){.landing .cursor,.landing .pill i{animation:none}}
 @media(prefers-reduced-motion:reduce){.landing h1,.landing .sub,.landing .cta-row,.landing .term,.landing header::before{animation:none}}
@@ -458,12 +458,24 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 @media(max-width:720px){
   .landing .wrap{padding:0 18px}
   .landing header{padding:64px 0 60px}
-  .landing h1{font-size:clamp(44px,14vw,64px);line-height:1.01}
-  .landing .sub{font-size:16px;line-height:1.55}
+  .landing h1{font-size:clamp(37px,11.9vw,54px);line-height:1.01}
+  .landing .pill{font-size:9.8px}
+  .landing .sub{font-size:13.6px;line-height:1.55}
+  .landing .btn-lg{font-size:13.6px}
+  .landing .under{font-size:10.2px}
   .landing .term{margin-top:52px;border-radius:14px}
-  .landing .term-body{min-height:190px;padding:16px;font-size:11.5px;line-height:1.85}
+  .landing .term-bar span{font-size:10.2px}
+  .landing .term-body{min-height:190px;padding:16px;font-size:9.8px;line-height:1.85}
   .landing section{padding:68px 0}
+  .landing h2{font-size:clamp(20px,2.55vw,29px)}
+  .landing .label{font-size:9.4px}
+  .landing .cell h3,.landing .agent-name{font-size:12.75px}
+  .landing .cell p,.landing .agent-copy{font-size:11.5px}
+  .landing .flip-hint{font-size:8.5px}
   .landing .price{padding:24px;gap:22px}
+  .landing .amt{font-size:37.4px}
+  .landing .inc{font-size:10.2px}
+  .landing footer{font-size:10.2px}
   .landing .price .btn{width:100%;justify-content:center}
   .landing .acell,.landing .aflip{min-height:188px}
 
@@ -862,4 +874,20 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 @media(max-width:640px){
   .missions .m-addmenu{grid-template-columns:repeat(2,1fr)}
   .missions .m-aacts>button{min-height:38px;flex:1 1 auto}
+}
+
+/* ---------- mobile: ~85% text on the missions/campaign workspace ---------- */
+@media(max-width:640px){
+  .missions{padding:32px 16px 64px}
+  .missions h1{font-size:25px}
+  .missions .m-sub{font-size:12px}
+  .missions .m-goal{font-size:11px;padding:9px 13px}
+  .missions .m-title{font-size:12.5px}
+  .missions .m-atitle{font-size:12px}
+  .missions .m-brief{font-size:11.5px}
+  .missions .m-reason,.missions .m-tsub{font-size:11.5px}
+  .missions .m-ttitle{font-size:11.5px}
+  .missions .m-atype{font-size:9.5px}
+  .missions .m-ebody{font-size:12px}
+  .missions .m-txmenu button,.missions .m-addmenu button{font-size:10.5px}
 }

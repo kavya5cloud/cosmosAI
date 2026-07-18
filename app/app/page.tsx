@@ -309,18 +309,17 @@ const DOCS = [
   { id: "articles", name: "Articles", icon: "▸", count: "(39)" },
 ];
 
-const TERM_LINES: [string, string][] = [
-  ["tl-p", "$ populr run --daily"],
-  ["", "> [seo] crawling sitemap… 214 pages"],
-  ["", "> [seo] scoring keyword gaps against 3 competitors…"],
-  ["", "> [reddit] scanning 14 subreddits for buying intent…"],
-  ["", "> [geo] querying ChatGPT / Perplexity for brand citations…"],
-  ["", "> [articles] researching 4 topic clusters…"],
-  ["", "> [ugc video] applying motion synthesis…"],
-  ["", "> fetching analytics…"],
-  ["", "> loading documents and initializing AI chat…"],
-  ["tl-ok", "✓ AI CMO initialized — 9 agents reporting"],
-];
+// The boot log is derived from the real workspace — brand, host, the channels that
+// actually have work, and the real agent count — not hardcoded numbers.
+function buildTermLines(brand: string, host: string, channels: string[], agentCount: number): [string, string][] {
+  const lines: [string, string][] = [["tl-p", `$ populr run --daily ${host}`]];
+  const shown = channels.slice(0, 6);
+  for (const ch of shown) lines.push(["", `> [${ch}] scanning for ${brand} opportunities…`]);
+  lines.push(["", "> fetching analytics…"]);
+  lines.push(["", "> loading documents and initializing AI chat…"]);
+  lines.push(["tl-ok", `✓ AI CMO ready — ${agentCount} agent${agentCount === 1 ? "" : "s"} on ${host}`]);
+  return lines;
+}
 
 const CHART = {
   "7d": { labels: ["7/5", "7/6", "7/7", "7/8", "7/9", "7/10", "7/11"], visits: [2100, 3050, 2700, 1900, 2050, 2350, 2600], clicks: [420, 510, 480, 390, 410, 460, 520], saw: "82.4K", sawD: "+12.3%", clicked: "3.9K", clickedD: "+48.2%", visited: "15.1K", visitedD: "+21.4%" },
@@ -608,19 +607,24 @@ export default function AppPage() {
   useEffect(() => {
     if (!entered) return;
     const el = tlogRef.current; if (!el) return;
+    const host = hostOf(url) || "your site";
+    const brand = profile?.name || host;
+    const channels = (Object.keys(feed).length ? Object.keys(feed) : visibleAgents.map((a) => a.id));
+    const lines = buildTermLines(brand, host, channels, visibleAgents.length);
     el.innerHTML = "";
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) { el.innerHTML = TERM_LINES.map(([c, t]) => `<div class="${c}">${esc(t)}</div>`).join(""); return; }
+    if (reduce) { el.innerHTML = lines.map(([c, t]) => `<div class="${c}">${esc(t)}</div>`).join(""); return; }
     let i = 0; let timer: ReturnType<typeof setTimeout>;
     const next = () => {
       if (!tlogRef.current) return;
-      if (i >= TERM_LINES.length) { el.insertAdjacentHTML("beforeend", '<div><span class="tl-p">populr@ai:~$</span> <span style="display:inline-block;width:7px;height:12px;background:var(--fg);vertical-align:-2px"></span></div>'); el.scrollTop = el.scrollHeight; return; }
-      const [c, t] = TERM_LINES[i++];
+      if (i >= lines.length) { el.insertAdjacentHTML("beforeend", '<div><span class="tl-p">populr@ai:~$</span> <span style="display:inline-block;width:7px;height:12px;background:var(--fg);vertical-align:-2px"></span></div>'); el.scrollTop = el.scrollHeight; return; }
+      const [c, t] = lines[i++];
       el.insertAdjacentHTML("beforeend", `<div class="${c}">${esc(t)}</div>`); el.scrollTop = el.scrollHeight;
       timer = setTimeout(next, 240 + Math.random() * 260);
     };
     timer = setTimeout(next, 300);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entered]);
 
   useEffect(() => { chatBodyRef.current?.scrollTo(0, chatBodyRef.current.scrollHeight); }, [chat, typing]);
@@ -756,26 +760,19 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
     let reply: string;
     let intent = "strategy";
     try {
-      // Intent-first: the server classifies the request (content/edit/transform/analysis/
-      // campaign/strategy) BEFORE any LLM, assembles the shared Business State, and returns
-      // the matching engine's prompt. Content asks get bare deliverables, not strategy memos.
+      // The server owns classification, evidence retrieval, deterministic decision-making,
+      // and rendering. The browser sends the founder's request, never an assembled prompt.
       const recentTurns = chat.slice(-6).map((m) => `${m.who === "me" ? "Founder" : "CMO"}: ${m.text}`).join("\n");
       const lastAi = [...chat].reverse().find((m) => m.who === "ai")?.text || "";
-      let prompt: string | null = null;
-      try {
-        const r = await fetch("/api/cmo/ask", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ wsid: workspaceId(), url, profile, question: q, recentTurns, source: lastAi, hasSelection: !!lastAi }),
-        });
-        const d = await r.json().catch(() => ({}));
-        if (r.ok && d.prompt) { prompt = d.prompt as string; intent = d.intent || "strategy"; }
-      } catch { /* fall back below */ }
-
-      if (!prompt) {
-        prompt = buildChatPrompt({ profile, url, competitors, feed, rankings, drafts, estTraffic, gscData, recentTurns: chat, question: q, mode: chatMode });
-      }
-      reply = await ai(prompt, url);
+      const r = await fetch("/api/cmo/respond", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wsid: workspaceId(), url, profile, question: q, recentTurns, source: lastAi, hasSelection: !!lastAi }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.text) throw new Error(d.error || "cmo response failed");
+      reply = d.text as string;
+      intent = d.intent || "strategy";
       setDemo(false);
     } catch (e) {
       reply = `AI request failed: ${aiErrorText(e).slice(0, 200)}`;
@@ -951,7 +948,7 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
           <div className="tb-l">
             <span className="app-wordmark">Populr.</span>
             <span className="sep">·</span>
-            <span className="mono" style={{ fontSize: 11, color: "var(--dim)" }}>AI CMO Terminal · running daily</span>
+            <span className="mono" style={{ fontSize: 11, color: "var(--dim)" }}>{profile?.name ? `${profile.name} · AI CMO` : hostOf(url) ? `${hostOf(url)} · AI CMO` : "AI CMO Terminal"}</span>
           </div>
           <div className="tb-r">
             <a href="/app/campaigns" className="credits" style={{ textDecoration: "none", color: "inherit" }} title="Marketing Missions — your AI CMO assigns work">missions ↗</a>
