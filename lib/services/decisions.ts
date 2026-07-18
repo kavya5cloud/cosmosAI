@@ -13,8 +13,8 @@ const PRIOR: Record<string, number> = {
   seo: 0.62, reddit: 0.58, articles: 0.55, geo: 0.54, linkedin: 0.5, x: 0.48, hn: 0.45,
 };
 
-export async function rankChannels(sql: Sql, wsKey: string): Promise<RankedChannel[]> {
-  await ensureIntelTables(sql);
+export async function rankChannels(sql: Sql, wsKey: string, ensureTables = true): Promise<RankedChannel[]> {
+  if (ensureTables) await ensureIntelTables(sql);
 
   type Agg = { channel: string; generated: number; approved: number; avg_score: number | null };
   const mine = (await sql`
