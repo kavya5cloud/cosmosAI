@@ -420,6 +420,7 @@ export default function AppPage() {
   const [verifyPopup, setVerifyPopup] = useState(false);
   const verifyShownRef = useRef(false);
   const [planOpen, setPlanOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const [gscData, setGscData] = useState<null | {
     site: string; impressions: string; clicks: string; ctr: string; position: string;
     deltas: { impressions: string; clicks: string; ctr: string; position: string };
@@ -965,7 +966,7 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
             )}
             {authUser && pushStatus?.configured && (
               <button
-                className={"bell" + (pushStatus.subscribed ? " on" : "")}
+                className={"bell bell-push" + (pushStatus.subscribed ? " on" : "")}
                 onClick={togglePush}
                 disabled={pushBusy}
                 title={pushStatus.subscribed ? "Publish reminders on" : "Enable publish reminders"}
@@ -992,7 +993,31 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
               <button className="authbtn" onClick={() => setAuthOpen(true)}>Sign in</button>
             ) : null}
             <a href="/account" className="avatar" title="Account">{(authUser?.[0] || hostOf(url)[0] || "c").toUpperCase()}</a>
+            <button className="tb-burger" onClick={() => setNavOpen((v) => !v)} aria-label="Menu" aria-expanded={navOpen}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+            </button>
           </div>
+          {navOpen && (
+            <>
+              <div className="tb-scrim" onClick={() => setNavOpen(false)} />
+              <div className="tb-drop" role="menu">
+                <a href="/app/campaigns" role="menuitem">Marketing Missions</a>
+                <a href="/worked" role="menuitem">What actually worked</a>
+                <button role="menuitem" onClick={() => { setNavOpen(false); setPlanOpen(true); }}>Today&apos;s posting plan</button>
+                {authUser && pushStatus?.configured && (
+                  <button role="menuitem" onClick={() => { togglePush(); }} disabled={pushBusy}>
+                    Publish reminders: {pushStatus.subscribed ? "on" : "off"}
+                  </button>
+                )}
+                <span className="tb-drop-status">{cloud ? "cloud ✓" : "local"}{liveTrial?.active ? ` · ${liveTrial.daysLeft}d trial left` : ""}</span>
+                {authUser ? (
+                  <button role="menuitem" onClick={() => { setNavOpen(false); logout(); }}>Log out</button>
+                ) : accountsEnabled ? (
+                  <button role="menuitem" onClick={() => { setNavOpen(false); setAuthOpen(true); }}>Sign in</button>
+                ) : null}
+              </div>
+            </>
+          )}
         </div>
 
         {demo && (

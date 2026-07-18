@@ -808,3 +808,20 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 .appui .msg-actions{display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
 .appui .msg-actions button{font-family:'Geist Mono',monospace;font-size:10.5px;color:var(--dim);background:transparent;border:1px solid var(--line);border-radius:6px;padding:4px 9px}
 .appui .msg-actions button:hover{color:var(--acc);border-color:rgba(213,255,114,.35)}
+
+/* ---- mobile topbar overflow menu (desktop unchanged) ---- */
+.appui .topbar{position:relative;padding-top:env(safe-area-inset-top,0px);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.appui .tb-burger{display:none;place-items:center;width:30px;height:30px;border-radius:7px;background:none;border:1px solid var(--line);color:var(--dim);padding:0}
+.appui .tb-burger svg{width:17px;height:17px;display:block}
+.appui .tb-burger:hover{color:var(--fg)}
+.appui .tb-scrim{position:fixed;inset:0;z-index:30}
+.appui .tb-drop{position:absolute;top:calc(100% + 6px);right:10px;z-index:31;min-width:212px;display:flex;flex-direction:column;padding:6px;background:#0b0e0c;border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.55)}
+.appui .tb-drop a,.appui .tb-drop button{text-align:left;background:none;border:0;color:var(--fg);font-family:'Geist Mono',monospace;font-size:12.5px;text-decoration:none;padding:10px 12px;border-radius:8px;cursor:pointer}
+.appui .tb-drop a:hover,.appui .tb-drop button:hover{background:var(--panel)}
+.appui .tb-drop button:disabled{opacity:.5}
+.appui .tb-drop-status{font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.06em;color:var(--faint);padding:9px 12px 4px;border-top:1px solid var(--line);margin-top:4px}
+@media(max-width:720px){
+  .appui .tb-burger{display:grid}
+  .appui .tb-r .credits,.appui .tb-r .bell-push,.appui .tb-r .who,.appui .tb-r .authbtn,.appui .trialchip{display:none}
+  .appui .tb-r{gap:8px}
+}
