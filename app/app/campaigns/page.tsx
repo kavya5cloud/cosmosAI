@@ -297,8 +297,8 @@ Give 4-8 tasks total across the timeline, each concrete enough to execute. Never
         body: JSON.stringify({ wsid: workspaceId(), url, profile, question: `Turn this into ${TYPE_LABEL[target] || target}`, source: chain.latest.body, target }),
       });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok || !d.prompt) throw new Error("couldn't prepare the transform");
-      const body = (await ai(d.prompt, url)).trim();
+      if (!r.ok || (!d.answer && !d.prompt)) throw new Error("couldn't prepare the transform");
+      const body = (d.answer ?? await ai(d.prompt, url)).trim();
       if (!body) throw new Error("transform came back empty");
       const res = await fetch("/api/studio/assets", {
         method: "POST",
@@ -329,8 +329,8 @@ Give 4-8 tasks total across the timeline, each concrete enough to execute. Never
         body: JSON.stringify({ wsid: workspaceId(), url, profile, question: `Write a ${TYPE_LABEL[type] || type} for the campaign "${c.title}". Brief: ${briefText(c.brief).slice(0, 800)}` }),
       });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok || !d.prompt) throw new Error("couldn't prepare the deliverable");
-      const body = (await ai(d.prompt, url)).trim();
+      if (!r.ok || (!d.answer && !d.prompt)) throw new Error("couldn't prepare the deliverable");
+      const body = (d.answer ?? await ai(d.prompt, url)).trim();
       if (!body) throw new Error("deliverable came back empty");
       const res = await fetch("/api/studio/assets", {
         method: "POST",

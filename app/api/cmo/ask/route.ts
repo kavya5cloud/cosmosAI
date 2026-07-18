@@ -10,6 +10,7 @@ import { buildStrategyPrompt } from "@/lib/services/strategy-engine";
 import { buildEditPrompt } from "@/lib/services/editor-engine";
 import { buildTransformPrompt } from "@/lib/services/transformation-engine";
 import { buildAnalysisPrompt } from "@/lib/services/analysis-engine";
+import { generateText } from "@/lib/services/llm";
 
 export const runtime = "nodejs";
 
@@ -86,9 +87,17 @@ export async function POST(req: NextRequest) {
     // strategy/analysis render the reasoning.
     const reasoning = routed.intent === "strategy" || routed.intent === "analysis" || routed.intent === "campaign";
     const confidence = confidenceOf(ctx.signals);
-    console.info(JSON.stringify({ event: "cmo_ask", wsKey: key, intent: routed.intent, asset: routed.asset, confidence }));
+
+    // Generate server-side (single round-trip). The URL is only used for context on the
+    // very first analysis; here the state is already assembled, so we skip re-scraping.
+    const gen = await generateText({ prompt, sql });
+    console.info(JSON.stringify({ event: "cmo_ask", wsKey: key, intent: routed.intent, asset: routed.asset, confidence, generated: gen.ok }));
+    if (!gen.ok) {
+      // Fall back to returning the prompt so the client can still try /api/generate.
+      return NextResponse.json({ ok: true, prompt, intent: routed.intent, asset: routed.asset, reasoning, confidence, nudge: routed.intent === "campaign" ? "/app/campaigns" : null });
+    }
     return NextResponse.json({
-      ok: true, prompt, intent: routed.intent, asset: routed.asset, reasoning, confidence,
+      ok: true, answer: gen.text, prompt, intent: routed.intent, asset: routed.asset, reasoning, confidence,
       nudge: routed.intent === "campaign" ? "/app/campaigns" : null,
     });
   } catch (e) {
