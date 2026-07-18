@@ -51,8 +51,32 @@ const BRIEF_LABELS: [string, string][] = [
 ];
 
 const TYPE_LABEL: Record<string, string> = {
-  blog: "Blog", linkedin_post: "LinkedIn post", x_thread: "X thread",
-  reddit_post: "Reddit post", email: "Email",
+  x_post: "X post", x_thread: "X thread", linkedin_post: "LinkedIn post",
+  reddit_post: "Reddit post", blog: "Blog", email: "Email",
+  landing_copy: "Landing copy", ig_carousel: "Carousel", ig_reel_script: "Reel script",
+  ugc_script: "UGC script", cta: "CTA variations", hooks: "Hook variations",
+};
+
+// The full deliverable set a mission can produce on demand.
+const DELIVERABLE_TYPES = [
+  "x_post", "x_thread", "linkedin_post", "reddit_post", "blog", "email",
+  "landing_copy", "ig_carousel", "ig_reel_script", "ugc_script", "cta", "hooks",
+] as const;
+
+// Sensible "Turn into …" targets per source type.
+const TRANSFORM_TARGETS: Record<string, string[]> = {
+  blog: ["x_thread", "x_post", "linkedin_post", "email", "ig_carousel", "reddit_post"],
+  x_post: ["x_thread", "linkedin_post", "ig_carousel"],
+  x_thread: ["linkedin_post", "blog", "ig_carousel", "x_post"],
+  linkedin_post: ["x_thread", "x_post", "ig_carousel"],
+  reddit_post: ["blog", "x_thread", "linkedin_post"],
+  email: ["x_thread", "linkedin_post", "landing_copy"],
+  landing_copy: ["email", "x_post", "linkedin_post"],
+  ig_carousel: ["x_thread", "ig_reel_script", "linkedin_post"],
+  ig_reel_script: ["ig_carousel", "x_thread", "ugc_script"],
+  ugc_script: ["ig_reel_script", "x_post"],
+  cta: ["hooks"],
+  hooks: ["cta"],
 };
 
 /** One asset chain = all versions sharing a root_id; latest version is the live one. */
@@ -89,6 +113,10 @@ export default function Missions() {
   const [editorVersion, setEditorVersion] = useState<number | null>(null); // null = latest
   const [editorText, setEditorText] = useState("");
   const [editorBusy, setEditorBusy] = useState<string | null>(null);
+  const [txMenu, setTxMenu] = useState<string | null>(null);   // rootId whose transform menu is open
+  const [addOpen, setAddOpen] = useState<string | null>(null); // campaignId whose add-deliverable menu is open
+  const [assetBusy, setAssetBusy] = useState<string | null>(null); // "<rootId>:<target>" or "add:<type>"
+  const [copied, setCopied] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     fetch(`/api/campaigns?wsid=${encodeURIComponent(workspaceId())}`)
@@ -257,6 +285,75 @@ Give 4-8 tasks total across the timeline, each concrete enough to execute. Never
     }
   }
 
+  // Ask the server (with shared Business State) for a deterministic transform prompt,
+  // generate it, and attach the result as a derived child of the source asset.
+  async function transformAsset(c: Campaign, chain: AssetChain, target: string) {
+    const busyKey = chain.rootId + ":" + target;
+    setAssetBusy(busyKey); setTxMenu(null); setErr(null);
+    try {
+      const r = await fetch("/api/cmo/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wsid: workspaceId(), url, profile, question: `Turn this into ${TYPE_LABEL[target] || target}`, source: chain.latest.body, target }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.prompt) throw new Error("couldn't prepare the transform");
+      const body = (await ai(d.prompt, url)).trim();
+      if (!body) throw new Error("transform came back empty");
+      const res = await fetch("/api/studio/assets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wsid: workspaceId(), campaignId: c.id,
+          assets: [{ clientKey: "tx", parentKey: chain.rootId, assetType: target, purpose: "Repurposed", title: `${TYPE_LABEL[target] || target} — ${chain.latest.title}`.slice(0, 120), body }],
+        }),
+      });
+      const dd = await res.json();
+      if (!res.ok || dd.error) throw new Error(dd.error || "couldn't save the new asset");
+      loadAssets(c.id);
+    } catch (e) {
+      setErr(String(e instanceof Error ? e.message : e).slice(0, 160));
+    } finally {
+      setAssetBusy(null);
+    }
+  }
+
+  // Generate a single deliverable of a chosen type from the brief (on-demand, as a root).
+  async function addDeliverable(c: Campaign, type: string) {
+    const busyKey = "add:" + type;
+    setAssetBusy(busyKey); setAddOpen(null); setErr(null);
+    try {
+      const r = await fetch("/api/cmo/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wsid: workspaceId(), url, profile, question: `Write a ${TYPE_LABEL[type] || type} for the campaign "${c.title}". Brief: ${briefText(c.brief).slice(0, 800)}` }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.prompt) throw new Error("couldn't prepare the deliverable");
+      const body = (await ai(d.prompt, url)).trim();
+      if (!body) throw new Error("deliverable came back empty");
+      const res = await fetch("/api/studio/assets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wsid: workspaceId(), campaignId: c.id,
+          assets: [{ clientKey: "add", parentKey: null, assetType: type, purpose: "Deliverable", title: `${TYPE_LABEL[type] || type}`, body }],
+        }),
+      });
+      const dd = await res.json();
+      if (!res.ok || dd.error) throw new Error(dd.error || "couldn't save the deliverable");
+      loadAssets(c.id);
+    } catch (e) {
+      setErr(String(e instanceof Error ? e.message : e).slice(0, 160));
+    } finally {
+      setAssetBusy(null);
+    }
+  }
+
+  function copyAsset(rootId: string, text: string) {
+    navigator.clipboard?.writeText(text).then(() => { setCopied(rootId); setTimeout(() => setCopied((v) => (v === rootId ? null : v)), 1400); }).catch(() => {});
+  }
+
   function campaignEvent(id: string, event: string, metadata?: Record<string, unknown>) {
     return fetch(`/api/campaigns/${id}/events`, {
       method: "POST",
@@ -367,38 +464,75 @@ Give 4-8 tasks total across the timeline, each concrete enough to execute. Never
                     </div>
                   ))}
 
-                  <div className="m-label">Assets</div>
+                  <div className="m-label">Deliverables</div>
                   {(() => {
                     const chains = chainsFromRows(assets[c.id] || []);
-                    if (!chains.length) {
-                      return (
-                        <button className="m-activate" disabled={genBusy === c.id} onClick={() => generateGraph(c)}>
-                          {genBusy === c.id ? "deriving asset graph…" : "Generate asset graph →"}
-                        </button>
-                      );
-                    }
                     const roots = chains.filter((ch) => !ch.parentRootId);
                     const childrenOf = (rootId: string) => chains.filter((ch) => ch.parentRootId === rootId);
-                    const AssetLine = ({ ch, depth }: { ch: AssetChain; depth: number }) => (
-                      <button
-                        className="m-asset"
-                        style={{ marginLeft: depth * 22 }}
-                        onClick={() => { setEditor({ campaign: c, rootId: ch.rootId }); setEditorVersion(null); setEditorText(ch.latest.body); }}
-                      >
-                        <span className="m-atype">{depth > 0 ? "└ " : ""}{TYPE_LABEL[ch.latest.asset_type] || ch.latest.asset_type}</span>
-                        <span className="m-atitle">{ch.latest.title}</span>
-                        <span className="m-astatus" data-s={ch.latest.status}>{ch.latest.status}{ch.versions.length > 1 ? ` · v${ch.latest.version}` : ""}</span>
-                      </button>
-                    );
-                    return (
-                      <div className="m-assets">
-                        {roots.map((r) => (
-                          <div key={r.rootId}>
-                            <AssetLine ch={r} depth={0} />
-                            {childrenOf(r.rootId).map((k) => <AssetLine key={k.rootId} ch={k} depth={1} />)}
+
+                    const AssetCard = ({ ch, depth }: { ch: AssetChain; depth: number }) => {
+                      const busy = assetBusy?.startsWith(ch.rootId + ":") ?? false;
+                      const targets = TRANSFORM_TARGETS[ch.latest.asset_type] || [];
+                      const openEditor = () => { setEditor({ campaign: c, rootId: ch.rootId }); setEditorVersion(null); setEditorText(ch.latest.body); };
+                      return (
+                        <div className="m-asset" style={{ marginLeft: depth * 16 }}>
+                          <div className="m-arow">
+                            <span className="m-atype">{depth > 0 ? "↳ " : ""}{TYPE_LABEL[ch.latest.asset_type] || ch.latest.asset_type}</span>
+                            <span className="m-astatus" data-s={ch.latest.status}>{ch.latest.status}{ch.versions.length > 1 ? ` · v${ch.latest.version}` : ""}</span>
                           </div>
-                        ))}
-                      </div>
+                          <button className="m-atitle" onClick={openEditor}>{ch.latest.title}</button>
+                          <div className="m-aacts">
+                            <button onClick={openEditor}>Edit</button>
+                            <button onClick={() => copyAsset(ch.rootId, ch.latest.body)}>{copied === ch.rootId ? "Copied ✓" : "Copy"}</button>
+                            {ch.latest.status !== "approved" && <button onClick={() => assetEvent(ch.latest.id, "approved", c.id)}>Approve</button>}
+                            {targets.length > 0 && (
+                              <div className="m-txwrap">
+                                <button disabled={busy} onClick={() => setTxMenu(txMenu === ch.rootId ? null : ch.rootId)}>
+                                  {busy ? "transforming…" : "Turn into ▾"}
+                                </button>
+                                {txMenu === ch.rootId && (
+                                  <div className="m-txmenu">
+                                    {targets.map((t) => (
+                                      <button key={t} onClick={() => transformAsset(c, ch, t)}>{TYPE_LABEL[t] || t}</button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    };
+
+                    return (
+                      <>
+                        {chains.length === 0 ? (
+                          <button className="m-activate" disabled={genBusy === c.id} onClick={() => generateGraph(c)}>
+                            {genBusy === c.id ? "generating deliverable set…" : "Generate deliverable set →"}
+                          </button>
+                        ) : (
+                          <div className="m-assets">
+                            {roots.map((r) => (
+                              <div key={r.rootId} className="m-assetgroup">
+                                <AssetCard ch={r} depth={0} />
+                                {childrenOf(r.rootId).map((k) => <AssetCard key={k.rootId} ch={k} depth={1} />)}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="m-addwrap">
+                          <button className="m-addbtn" onClick={() => setAddOpen(addOpen === c.id ? null : c.id)}>+ Add deliverable</button>
+                          {addOpen === c.id && (
+                            <div className="m-addmenu">
+                              {DELIVERABLE_TYPES.map((t) => (
+                                <button key={t} disabled={assetBusy === "add:" + t} onClick={() => addDeliverable(c, t)}>
+                                  {assetBusy === "add:" + t ? "…" : TYPE_LABEL[t]}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </>
                     );
                   })()}
                   {c.status === "draft" && (
@@ -465,6 +599,7 @@ Give 4-8 tasks total across the timeline, each concrete enough to execute. Never
                     setEditorBusy(null); setEditorVersion(null);
                   }}
                 >{editorBusy === "saving" ? "saving…" : "Save as new version"}</button>
+                <button onClick={() => copyAsset(chain.rootId, editorText)}>{copied === chain.rootId ? "Copied ✓" : "Copy"}</button>
                 <button
                   disabled={!!editorBusy || chain.latest.status === "approved"}
                   onClick={() => assetEvent(chain.latest.id, "approved", editor.campaign.id)}

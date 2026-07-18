@@ -2,7 +2,12 @@
 // Assets are OBJECTS with graph edges (parent → children), never loose strings: the LLM
 // drafts them, but nothing enters the database unless the object contract is complete.
 
-export const ASSET_TYPES = ["blog", "linkedin_post", "x_thread", "reddit_post", "email"] as const;
+// Deliverable types — aligned to the intent-router AssetKind names so a studio asset
+// type is always a valid transform target.
+export const ASSET_TYPES = [
+  "x_post", "x_thread", "linkedin_post", "reddit_post", "blog", "email",
+  "landing_copy", "ig_carousel", "ig_reel_script", "ugc_script", "cta", "hooks",
+] as const;
 export type AssetType = (typeof ASSET_TYPES)[number];
 
 export const ASSET_EVENTS = [
@@ -13,8 +18,12 @@ export type AssetEvent = (typeof ASSET_EVENTS)[number];
 export const ASSET_STATUSES = ["draft", "approved", "rejected", "scheduled", "published", "archived"] as const;
 
 const CHANNEL_FOR_TYPE: Record<AssetType, string> = {
-  blog: "articles", linkedin_post: "linkedin", x_thread: "x", reddit_post: "reddit", email: "email",
+  x_post: "x", x_thread: "x", linkedin_post: "linkedin", reddit_post: "reddit",
+  blog: "articles", email: "email", landing_copy: "seo", ig_carousel: "instagram",
+  ig_reel_script: "instagram", ugc_script: "ugc", cta: "x", hooks: "x",
 };
+
+const UUID_RE = /^[0-9a-f-]{36}$/i;
 
 export type AssetInput = {
   clientKey: string;
@@ -70,9 +79,10 @@ export function validateAssetGraph(raw: unknown): AssetGraphResult {
     });
   });
 
-  // Every parentKey must resolve to another asset in the same batch (graph integrity).
+  // Every parentKey must resolve to another asset in the same batch, OR be an existing
+  // asset's UUID (a transform attaching a derived child to a live asset).
   for (const a of out) {
-    if (a.parentKey && !keys.has(a.parentKey)) errors.push(`parent:${a.parentKey}`);
+    if (a.parentKey && !keys.has(a.parentKey) && !UUID_RE.test(a.parentKey)) errors.push(`parent:${a.parentKey}`);
   }
 
   if (errors.length) return { ok: false, errors };

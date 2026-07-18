@@ -53,10 +53,13 @@ export async function createAssetGraph(
   await ensureAssetTables(sql);
 
   const ids: Record<string, string> = {};
+  const UUID_RE = /^[0-9a-f-]{36}$/i;
   // Parents before children so parent_asset_id can resolve within one pass.
   const ordered = [...assets].sort((a, b) => Number(a.parentKey !== null) - Number(b.parentKey !== null));
   for (const a of ordered) {
-    const parentRootId = a.parentKey ? ids[a.parentKey] ?? null : null;
+    // A parentKey is either a clientKey from this batch or an existing asset's root_id
+    // (a transform deriving a child from a live asset).
+    const parentRootId = a.parentKey ? (ids[a.parentKey] ?? (UUID_RE.test(a.parentKey) ? a.parentKey : null)) : null;
     const rows = (await sql`
       INSERT INTO content_assets
         (workspace_key, campaign_id, channel, title, body, asset_type, purpose,

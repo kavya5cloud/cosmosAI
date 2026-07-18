@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 import { rateLimit, requestKey } from "@/lib/throttle";
 import { workspaceKey } from "@/lib/intel";
 import { assembleCmoContext, confidenceOf, type CmoProfile } from "@/lib/services/cmo-context";
-import { routeIntent } from "@/lib/services/intent-router";
+import { routeIntent, ASSET_LABEL, type AssetKind } from "@/lib/services/intent-router";
 import { buildContentPrompt } from "@/lib/services/content-engine";
 import { buildStrategyPrompt } from "@/lib/services/strategy-engine";
 import { buildEditPrompt } from "@/lib/services/editor-engine";
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
   let body: {
     wsid?: string; url?: string; profile?: CmoProfile; question?: string;
-    recentTurns?: string; source?: string; hasSelection?: boolean;
+    recentTurns?: string; source?: string; hasSelection?: boolean; target?: string;
   };
   try {
     body = await req.json();
@@ -42,8 +42,14 @@ export async function POST(req: NextRequest) {
   if (!question) return NextResponse.json({ error: "empty_question" }, { status: 400 });
 
   const source = String(body.source || "").slice(0, 8000);
-  const routed = routeIntent(question, !!body.hasSelection && !!source);
   const recentTurns = String(body.recentTurns || "").slice(0, 4000);
+
+  // Explicit target + source → deterministic transform (the workspace "Turn into …"
+  // action). No re-classification: the user picked the destination format.
+  const explicitTarget = body.target && body.target in ASSET_LABEL ? (body.target as AssetKind) : null;
+  const routed = explicitTarget && source
+    ? ({ intent: "transform" as const, asset: explicitTarget, target: explicitTarget })
+    : routeIntent(question, !!body.hasSelection && !!source);
 
   try {
     const ctx = await assembleCmoContext(sql, key, body.profile || {}, String(body.url || ""));

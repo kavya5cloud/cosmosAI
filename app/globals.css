@@ -823,5 +823,43 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 @media(max-width:720px){
   .appui .tb-burger{display:grid}
   .appui .tb-r .credits,.appui .tb-r .bell-push,.appui .tb-r .who,.appui .tb-r .authbtn,.appui .trialchip{display:none}
-  .appui .tb-r{gap:8px}
+  .appui .tb-r{gap:10px}
+  /* thumb-friendly touch targets */
+  .appui .tb-burger{width:36px;height:36px}
+  .appui .tb-r .bell{width:36px;height:36px}
+  .appui .tb-r .avatar{width:32px;height:32px;font-size:12px}
+  .appui .tb-drop a,.appui .tb-drop button{padding:12px 12px;min-height:44px}
+}
+
+/* ---------- Campaign Workspace: deliverable cards ---------- */
+.missions .m-assets{display:flex;flex-direction:column;gap:12px}
+.missions .m-assetgroup{display:flex;flex-direction:column;gap:8px}
+.missions .m-asset{border:1px solid var(--line);border-radius:11px;background:var(--panel);padding:12px 13px}
+.missions .m-asset:hover{border-color:var(--dim)}
+.missions .m-arow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.missions .m-atype{font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--acc)}
+.missions .m-astatus{font-family:'Geist Mono',monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:5px;border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+.missions .m-astatus[data-s="approved"]{color:var(--acc);border-color:rgba(213,255,114,.4)}
+.missions .m-astatus[data-s="archived"]{color:var(--faint)}
+.missions .m-astatus[data-s="published"]{color:var(--fg)}
+.missions .m-atitle{display:block;width:100%;text-align:left;background:none;border:0;color:var(--fg);font-size:13.5px;font-weight:500;line-height:1.4;padding:0;cursor:pointer}
+.missions .m-atitle:hover{color:var(--acc)}
+.missions .m-aacts{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.missions .m-aacts>button,.missions .m-txwrap>button{font-family:'Geist Mono',monospace;font-size:11.5px;min-height:34px;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--dim)}
+.missions .m-aacts>button:hover:not(:disabled),.missions .m-txwrap>button:hover:not(:disabled){color:var(--fg);border-color:var(--dim)}
+.missions .m-aacts>button:disabled,.missions .m-txwrap>button:disabled{opacity:.5}
+.missions .m-txwrap{position:relative;display:inline-block}
+.missions .m-txmenu{position:absolute;top:calc(100% + 5px);left:0;z-index:5;min-width:150px;display:flex;flex-direction:column;padding:5px;background:#0b0e0c;border:1px solid var(--line);border-radius:10px;box-shadow:0 14px 34px rgba(0,0,0,.5)}
+.missions .m-txmenu button{text-align:left;font-family:'Geist Mono',monospace;font-size:12px;min-height:36px;padding:8px 10px;border:0;border-radius:7px;background:none;color:var(--fg)}
+.missions .m-txmenu button:hover{background:var(--panel)}
+.missions .m-addwrap{position:relative;margin-top:14px}
+.missions .m-addbtn{font-family:'Geist Mono',monospace;font-size:12px;min-height:38px;padding:9px 15px;border-radius:9px;border:1px dashed var(--line);background:transparent;color:var(--dim);width:100%}
+.missions .m-addbtn:hover{color:var(--acc);border-color:rgba(213,255,114,.35)}
+.missions .m-addmenu{margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.missions .m-addmenu button{font-family:'Geist Mono',monospace;font-size:11px;min-height:38px;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg)}
+.missions .m-addmenu button:hover:not(:disabled){border-color:var(--acc);color:var(--acc)}
+.missions .m-addmenu button:disabled{opacity:.5}
+@media(max-width:640px){
+  .missions .m-addmenu{grid-template-columns:repeat(2,1fr)}
+  .missions .m-aacts>button{min-height:38px;flex:1 1 auto}
 }
