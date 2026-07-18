@@ -505,7 +505,7 @@ const inflight = new Map<string, Promise<GenResult>>();
 
 
 export type GenerateResult =
-  | { ok: true; text: string; provider: string; cached: boolean; stale?: boolean; coalesced?: boolean }
+  | { ok: true; text: string; provider: string; model?: string; cached: boolean; stale?: boolean; coalesced?: boolean }
   | { ok: false; status: number; error: string; message?: string };
 
 /** Provider names that currently have a valid key (for logging + capability checks). */
@@ -530,7 +530,7 @@ export async function generateText(opts: { prompt: string; url?: string | null; 
     const hit = await getCachedAnalysis(sql, cacheKey, ANALYSIS_TTL_MS);
     if (hit) {
       logEvent("analysis_cache_hit", { requestId, url: opts.url || null, provider: hit.provider, model: hit.model, ageMs: Math.round(hit.ageMs), elapsedMs: Date.now() - started });
-      return { ok: true, text: hit.text, provider: hit.provider || "cache", cached: true };
+      return { ok: true, text: hit.text, provider: hit.provider || "cache", model: hit.model || undefined, cached: true };
     }
   }
 
@@ -604,7 +604,7 @@ export async function generateText(opts: { prompt: string; url?: string | null; 
 
   if (result.ok) {
     logEvent("llm_generate_complete", { requestId, provider: result.provider, model: result.model, status: 200, elapsedMs: Date.now() - started, ...(result.retried ? { retried: true } : {}), ...(leader ? {} : { coalesced: true }) });
-    return { ok: true, text: result.text, provider: result.provider, cached: false, ...(leader ? {} : { coalesced: true }) };
+    return { ok: true, text: result.text, provider: result.provider, model: result.model, cached: false, ...(leader ? {} : { coalesced: true }) };
   }
 
   const lastAttempt = result.lastAttempt;
@@ -614,7 +614,7 @@ export async function generateText(opts: { prompt: string; url?: string | null; 
     const stale = await getCachedAnalysis(sql, cacheKey, ANALYSIS_STALE_MS);
     if (stale) {
       logEvent("analysis_cache_stale_served", { requestId, url: opts.url || null, provider: stale.provider, model: stale.model, ageMs: Math.round(stale.ageMs), elapsedMs: Date.now() - started });
-      return { ok: true, text: stale.text, provider: stale.provider || "cache", cached: true, stale: true };
+      return { ok: true, text: stale.text, provider: stale.provider || "cache", model: stale.model || undefined, cached: true, stale: true };
     }
   }
   return { ok: false, status: 503, error: "ai_temporarily_unavailable", message: "Our AI providers are temporarily busy. Please try again in a minute." };

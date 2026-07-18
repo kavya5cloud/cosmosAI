@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHash } from "node:crypto";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { rateLimit, requestKey } from "@/lib/throttle";
 import { workspaceKey } from "@/lib/intel";
 import { assembleCmoContext, confidenceOf, type CmoProfile } from "@/lib/services/cmo-context";
-import { buildEvidencePack, classifyRequest, decide, renderPrompt, verifyResponse } from "@/lib/cmo/pipeline";
+import { classifyRequest, decide, renderPrompt, verifyResponse } from "@/lib/cmo/pipeline";
 import type { CmoRequest, CmoResponse } from "@/lib/cmo/contracts";
 import { buildContentPrompt } from "@/lib/services/content-engine";
 import { buildEditPrompt } from "@/lib/services/editor-engine";
@@ -13,13 +12,10 @@ import { buildTransformPrompt } from "@/lib/services/transformation-engine";
 import { buildAnalysisPrompt } from "@/lib/services/analysis-engine";
 import { buildStrategyPrompt } from "@/lib/services/strategy-engine";
 import { generateText } from "@/lib/services/llm";
+import { projectBusinessGraph } from "@/lib/business-graph";
+import { fingerprint, persistGraph, persistDecision, appendDecisionEvent, readCachedCmoResponse, writeCachedCmoResponse } from "@/lib/cmo/store";
 
 export const runtime = "nodejs";
-const responseCache = new Map<string, { expiresAt: number; response: CmoResponse }>();
-
-function keyFor(workspace: string, question: string, contextVersion: string) {
-  return createHash("sha256").update(`${workspace}:${contextVersion}:${question}`).digest("hex");
-}
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -34,14 +30,23 @@ export async function POST(req: NextRequest) {
   const workspace = await workspaceKey(body.wsid ?? null);
   if (!workspace) return NextResponse.json({ error: "no_key" }, { status: 400 });
   try {
+    // Canonical state → business graph (versioned). The client profile is only a cold-start
+    // seed; assembleCmoContext loads the canonical profile from the DB. The graph version is
+    // the source of truth for both the cache key and decision provenance.
     const ctx = await assembleCmoContext(sql, workspace, (body.profile || {}) as CmoProfile, String(body.url || ""));
-    const evidence = buildEvidencePack(ctx);
+    const graph = await projectBusinessGraph(sql, workspace, ctx.business, String(body.url || ""), ctx);
+    await persistGraph(sql, graph);
+    const evidence = graph.evidence;
+    const graphVersion = graph.version;
+
     const routed = classifyRequest({ ...body, question });
     const decision = decide(ctx, evidence);
-    const contextVersion = [ctx.missions.length, ctx.whatWorked.length, ctx.dismissed.length, ctx.latestMetrics?.capturedAt || "none"].join(":");
-    const cacheKey = keyFor(workspace, question, contextVersion);
-    const cached = responseCache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) return NextResponse.json({ ...cached.response, cached: true });
+
+    // Cache keyed on graph version — a stale-context reply can never be served.
+    const cacheKey = fingerprint(`${workspace}:${graphVersion}:${routed.intent}:${body.source || ""}:${question}`);
+    const hit = await readCachedCmoResponse(sql, cacheKey);
+    if (hit) return NextResponse.json({ ...hit, cached: true });
+
     const asset = routed.asset || "x_post";
     const prompt = routed.intent === "content"
       ? buildContentPrompt(ctx, asset, question)
@@ -54,18 +59,29 @@ export async function POST(req: NextRequest) {
             : routed.intent === "campaign"
               ? buildStrategyPrompt(ctx, question, String(body.recentTurns || "").slice(0, 4000))
               : renderPrompt({ ...body, question }, routed, decision, evidence);
+
     // Render via the LLM service directly — no HTTP self-call. Context is already in the
     // prompt (assembled state), so we don't re-scrape the URL here.
     let rendered = "";
+    let provider: string | undefined;
+    let model: string | undefined;
     if (decision.status === "recommended") {
       const gen = await generateText({ prompt, sql });
       if (!gen.ok) throw new Error(gen.error);
       rendered = gen.text;
+      provider = gen.provider;
+      model = gen.model;
     }
     const text = verifyResponse(rendered, decision, evidence);
     const response: CmoResponse = { text, intent: routed.intent, confidence: confidenceOf(ctx.signals), decision, evidence: Object.values(evidence).flat(), cached: false };
-    responseCache.set(cacheKey, { response, expiresAt: Date.now() + 60_000 });
-    console.info(JSON.stringify({ event: "cmo_response", workspace, intent: routed.intent, decision: decision.status, confidence: response.confidence, evidence: response.evidence.length, cached: false }));
+
+    // Persist the decision artifact + evidence (append-only), with model/response metadata,
+    // then cache the response against the graph version.
+    const decisionId = await persistDecision(sql, workspace, graphVersion, routed.intent, question, decision, response.evidence);
+    await appendDecisionEvent(sql, decisionId, "rendered", { provider: provider || "none", model: model || "none", textLength: text.length, decisionStatus: decision.status });
+    await writeCachedCmoResponse(sql, cacheKey, workspace, graphVersion, response);
+
+    console.info(JSON.stringify({ event: "cmo_response", workspace, intent: routed.intent, decision: decision.status, confidence: response.confidence, evidence: response.evidence.length, graphVersion: graphVersion.slice(0, 12), decisionId, model: model || "none", cached: false }));
     return NextResponse.json(response);
   } catch (error) {
     console.info(JSON.stringify({ event: "cmo_response_error", workspace, detail: String(error).slice(0, 200) }));
