@@ -1,4 +1,4 @@
-import type { Sql } from "@/lib/db";
+import { type Sql, RUNTIME_DDL } from "@/lib/db";
 
 // Google Search Console (read-only) OAuth + Search Analytics API.
 const SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
@@ -58,7 +58,9 @@ async function refresh(refreshToken: string): Promise<TokenResp> {
   return r.json();
 }
 
+let googleTablesReady = false;
 export async function ensureGoogleTable(sql: Sql) {
+  if (!RUNTIME_DDL) { googleTablesReady = true; return; }
   await sql`CREATE TABLE IF NOT EXISTS google_tokens (
     user_id TEXT PRIMARY KEY,
     access_token TEXT,

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { Sql } from "@/lib/db";
+import { type Sql, RUNTIME_DDL } from "@/lib/db";
 
 // Short-lived caches that cut Groq/LLM usage and page-fetch latency for repeated
 // domains. Both are best-effort: every function tolerates a missing table / DB error
@@ -30,6 +30,7 @@ export function buildCacheKey(url: string | null, prompt: string): string {
 let tablesReady = false;
 async function ensureCacheTables(sql: Sql) {
   if (tablesReady) return;
+  if (!RUNTIME_DDL) { tablesReady = true; return; }
   await sql`CREATE TABLE IF NOT EXISTS analysis_cache (
     cache_key TEXT PRIMARY KEY,
     url TEXT,

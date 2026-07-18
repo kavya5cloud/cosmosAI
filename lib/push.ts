@@ -1,5 +1,5 @@
 import webpush from "web-push";
-import type { Sql } from "@/lib/db";
+import { type Sql, RUNTIME_DDL } from "@/lib/db";
 import type { NotificationPrefs } from "@/lib/publish-times";
 import { DEFAULT_PREFS } from "@/lib/publish-times";
 
@@ -29,7 +29,9 @@ export function initWebPush() {
   return true;
 }
 
+let pushTablesReady = false;
 export async function ensurePushTables(sql: Sql) {
+  if (!RUNTIME_DDL) { pushTablesReady = true; return; }
   await sql`CREATE TABLE IF NOT EXISTS push_subscriptions (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,

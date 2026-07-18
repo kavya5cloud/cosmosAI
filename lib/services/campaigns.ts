@@ -1,4 +1,4 @@
-import type { Sql } from "@/lib/db";
+import { type Sql, RUNTIME_DDL } from "@/lib/db";
 import { logRecommendations } from "@/lib/intel";
 import type { CampaignInput, CampaignEvent, CampaignTask } from "@/lib/services/contracts";
 
@@ -10,6 +10,7 @@ import type { CampaignInput, CampaignEvent, CampaignTask } from "@/lib/services/
 let campaignTablesReady = false;
 export async function ensureCampaignTables(sql: Sql) {
   if (campaignTablesReady) return;
+  if (!RUNTIME_DDL) { campaignTablesReady = true; return; }
   await sql`CREATE TABLE IF NOT EXISTS campaigns (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_key TEXT NOT NULL,

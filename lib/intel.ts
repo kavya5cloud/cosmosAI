@@ -1,4 +1,4 @@
-import type { Sql } from "@/lib/db";
+import { type Sql, RUNTIME_DDL } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 
 /**
@@ -59,6 +59,7 @@ export async function workspaceKey(clientWsid: string | null | undefined): Promi
 let intelReady = false;
 export async function ensureIntelTables(sql: Sql) {
   if (intelReady) return;
+  if (!RUNTIME_DDL) { intelReady = true; return; }
   await sql`CREATE TABLE IF NOT EXISTS websites (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_key TEXT NOT NULL,

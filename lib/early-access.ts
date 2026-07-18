@@ -1,4 +1,4 @@
-import type { Sql } from "@/lib/db";
+import { type Sql, RUNTIME_DDL } from "@/lib/db";
 
 // Early Access Program — application capture + status pipeline.
 // Storing an application must NEVER fail because email isn't configured; the welcome
@@ -10,6 +10,7 @@ export type EaStatus = (typeof EA_STATUSES)[number];
 let eaReady = false;
 export async function ensureEarlyAccessTable(sql: Sql) {
   if (eaReady) return;
+  if (!RUNTIME_DDL) { eaReady = true; return; }
   await sql`CREATE TABLE IF NOT EXISTS early_access (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

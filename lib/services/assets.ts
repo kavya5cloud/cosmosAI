@@ -1,4 +1,4 @@
-import type { Sql } from "@/lib/db";
+import { type Sql, RUNTIME_DDL } from "@/lib/db";
 import type { AssetInput, AssetEvent } from "@/lib/services/asset-validate";
 
 // Content Studio service — the Asset Graph.
@@ -19,6 +19,7 @@ import type { AssetInput, AssetEvent } from "@/lib/services/asset-validate";
 let assetTablesReady = false;
 export async function ensureAssetTables(sql: Sql) {
   if (assetTablesReady) return;
+  if (!RUNTIME_DDL) { assetTablesReady = true; return; }
   // content_assets exists (intelligence layer) — extend it into the graph model.
   await sql`ALTER TABLE content_assets ADD COLUMN IF NOT EXISTS campaign_id UUID`;
   await sql`ALTER TABLE content_assets ADD COLUMN IF NOT EXISTS asset_type TEXT`;
@@ -28,6 +29,14 @@ export async function ensureAssetTables(sql: Sql) {
   await sql`ALTER TABLE content_assets ADD COLUMN IF NOT EXISTS root_id UUID`;
   await sql`ALTER TABLE content_assets ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1`;
   await sql`ALTER TABLE content_assets ADD COLUMN IF NOT EXISTS structure JSONB`;
+  await sql`ALTER TABLE content_assets ADD COLUMN IF NOT EXISTS mission_id UUID`;
+  await sql`ALTER TABLE content_assets ADD COLUMN IF NOT EXISTS creative_brief JSONB`;
+  await sql`ALTER TABLE content_assets ADD COLUMN IF NOT EXISTS audience TEXT`;
+  await sql`ALTER TABLE content_assets ADD COLUMN IF NOT EXISTS dependencies JSONB NOT NULL DEFAULT '[]'::jsonb`;
+  await sql`ALTER TABLE content_assets ADD COLUMN IF NOT EXISTS performance JSONB`;
+  await sql`ALTER TABLE content_assets ADD COLUMN IF NOT EXISTS brand_score REAL`;
+  await sql`ALTER TABLE content_assets ADD COLUMN IF NOT EXISTS taste_score REAL`;
+  await sql`ALTER TABLE content_assets ADD COLUMN IF NOT EXISTS reasoning_trace JSONB`;
   await sql`CREATE INDEX IF NOT EXISTS idx_assets_campaign ON content_assets (campaign_id, created_at)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_assets_root ON content_assets (root_id, version)`;
   await sql`CREATE TABLE IF NOT EXISTS asset_events (
@@ -93,6 +102,31 @@ export type AssetRow = {
   parent_asset_id: string | null;
   created_at: string;
 };
+
+export type CreativeMemory = {
+  winning: { title: string; channel: string; assetType: string; body: string }[];
+  rejected: { title: string; channel: string; assetType: string }[];
+};
+
+/** Compact, channel-scoped positive and negative creative memory for generation. */
+export async function getCreativeMemory(sql: Sql, wsKey: string, channel: string, limit = 3): Promise<CreativeMemory> {
+  await ensureAssetTables(sql);
+  const winning = (await sql`
+    SELECT DISTINCT ON (a.root_id) a.title, a.channel, a.asset_type, a.body
+    FROM content_assets a
+    JOIN asset_events e ON e.asset_id = a.id AND e.event IN ('approved', 'published', 'performance')
+    WHERE a.workspace_key = ${wsKey} AND a.channel = ${channel}
+    ORDER BY a.root_id, a.version DESC, a.created_at DESC
+    LIMIT ${limit}`) as { title: string; channel: string; asset_type: string; body: string }[];
+  const rejected = (await sql`
+    SELECT DISTINCT ON (a.root_id) a.title, a.channel, a.asset_type
+    FROM content_assets a
+    JOIN asset_events e ON e.asset_id = a.id AND e.event = 'rejected'
+    WHERE a.workspace_key = ${wsKey} AND a.channel = ${channel}
+    ORDER BY a.root_id, a.version DESC, a.created_at DESC
+    LIMIT ${limit}`) as { title: string; channel: string; asset_type: string }[];
+  return { winning: winning.map((a) => ({ title: a.title, channel: a.channel, assetType: a.asset_type, body: a.body.slice(0, 1200) })), rejected: rejected.map((a) => ({ title: a.title, channel: a.channel, assetType: a.asset_type })) };
+}
 
 /** All versions of all assets for a campaign (client groups by root_id). */
 export async function listAssets(sql: Sql, wsKey: string, campaignId: string): Promise<AssetRow[]> {
