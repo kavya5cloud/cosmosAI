@@ -71,11 +71,12 @@ export async function createAssetGraph(
     const parentRootId = a.parentKey ? (ids[a.parentKey] ?? (UUID_RE.test(a.parentKey) ? a.parentKey : null)) : null;
     const rows = (await sql`
       INSERT INTO content_assets
-        (workspace_key, campaign_id, channel, title, body, asset_type, purpose,
-         parent_asset_id, structure, status, version)
+        (workspace_key, campaign_id, mission_id, channel, title, body, asset_type, purpose,
+         parent_asset_id, dependencies, structure, status, version)
       VALUES
-        (${wsKey}, ${campaignId}, ${a.channel}, ${a.title}, ${a.body}, ${a.assetType},
-         ${a.purpose}, ${parentRootId}, ${a.structure ? JSON.stringify(a.structure) : null},
+        (${wsKey}, ${campaignId}, ${campaignId}, ${a.channel}, ${a.title}, ${a.body}, ${a.assetType},
+         ${a.purpose}, ${parentRootId}, ${JSON.stringify(parentRootId ? [parentRootId] : [])}::jsonb,
+         ${a.structure ? JSON.stringify(a.structure) : null},
          'draft', 1)
       RETURNING id`) as { id: string }[];
     const id = rows[0].id;
