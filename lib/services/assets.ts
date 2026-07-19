@@ -88,6 +88,46 @@ export async function createAssetGraph(
   return ids;
 }
 
+/**
+ * Record a single generated asset as its own root chain in the Asset Graph (Content
+ * Studio entry point). Returns the new root_id. `assetType` is free text here so the
+ * broader Content-Studio kind vocabulary (hero_video, landing_hero, …) is supported
+ * without the campaign-batch validator. Logs a 'generated' lifecycle event.
+ */
+export async function recordGeneratedAsset(
+  sql: Sql,
+  wsKey: string,
+  input: {
+    campaignId: string | null;
+    channel: string;
+    assetType: string;
+    purpose: string;
+    title: string;
+    body: string;
+    structure?: Record<string, unknown> | null;
+    parentRootId?: string | null;
+    actor?: string;
+  }
+): Promise<string> {
+  await ensureAssetTables(sql);
+  const parent = input.parentRootId ?? null;
+  const rows = (await sql`
+    INSERT INTO content_assets
+      (workspace_key, campaign_id, mission_id, channel, title, body, asset_type, purpose,
+       parent_asset_id, dependencies, structure, status, version)
+    VALUES
+      (${wsKey}, ${input.campaignId}, ${input.campaignId}, ${input.channel}, ${input.title}, ${input.body},
+       ${input.assetType}, ${input.purpose}, ${parent},
+       ${JSON.stringify(parent ? [parent] : [])}::jsonb,
+       ${input.structure ? JSON.stringify(input.structure) : null}, 'draft', 1)
+    RETURNING id`) as { id: string }[];
+  const id = rows[0].id;
+  await sql`UPDATE content_assets SET root_id = ${id} WHERE id = ${id}`;
+  await sql`INSERT INTO asset_events (asset_id, event, actor, metadata)
+            VALUES (${id}, 'generated', ${input.actor ?? "studio"}, ${JSON.stringify({ derivedFrom: parent })})`;
+  return id;
+}
+
 export type AssetRow = {
   id: string;
   root_id: string;

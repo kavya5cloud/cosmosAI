@@ -80,15 +80,15 @@ export const ASSET_KIND_META: Record<AssetKind, AssetKindMeta> = {
   case_study:      { kind: "case_study",      label: "Case Study",        category: "documents", channel: "articles",  effort: 2, foundational: false },
 };
 
-export const CATEGORY_META: Record<CreativeCategory, { label: string; blurb: string; icon: string }> = {
-  launch:    { label: "Launch",         blurb: "Complete, multi-asset product launches planned end-to-end.", icon: "🚀" },
-  videos:    { label: "Videos",         blurb: "Hero launch videos and product demos.",                       icon: "🎬" },
-  ugc:       { label: "UGC",            blurb: "Authentic creator-style user-generated videos.",              icon: "📱" },
-  motion:    { label: "Motion Graphics", blurb: "Animated explainers, loops and kinetic type.",               icon: "✨" },
-  images:    { label: "Images",         blurb: "Landing heroes, carousels, infographics and posts.",          icon: "🖼️" },
-  documents: { label: "Documents",      blurb: "Blogs, threads, emails, press releases and decks.",           icon: "📄" },
-  ads:       { label: "Ads",            blurb: "Performance ad creatives across paid channels.",              icon: "📣" },
-  library:   { label: "Asset Library",  blurb: "Every generated asset, versioned and searchable.",            icon: "🗂️" },
+export const CATEGORY_META: Record<CreativeCategory, { label: string; blurb: string }> = {
+  launch:    { label: "Launch",         blurb: "Complete, multi-asset product launches planned end-to-end." },
+  videos:    { label: "Videos",         blurb: "Hero launch videos and product demos." },
+  ugc:       { label: "UGC",            blurb: "Authentic creator-style user-generated videos." },
+  motion:    { label: "Motion Graphics", blurb: "Animated explainers, loops and kinetic type." },
+  images:    { label: "Images",         blurb: "Landing heroes, carousels, infographics and posts." },
+  documents: { label: "Documents",      blurb: "Blogs, threads, emails, press releases and decks." },
+  ads:       { label: "Ads",            blurb: "Performance ad creatives across paid channels." },
+  library:   { label: "Asset Library",  blurb: "Every generated asset, versioned and searchable." },
 };
 
 export function kindsForCategory(category: CreativeCategory): AssetKindMeta[] {

@@ -9,7 +9,7 @@ export default function StudioSection({ category }: { category: CreativeCategory
   return (
     <section className="st-section">
       <header className="st-shead">
-        <span className="label">{meta.icon} {meta.label}</span>
+        <span className="label">{meta.label}</span>
         <h1>{meta.label}</h1>
         <p>{meta.blurb}</p>
       </header>

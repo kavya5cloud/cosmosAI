@@ -8,7 +8,7 @@ export default function StudioHome() {
   return (
     <section className="st-section">
       <header className="st-shead">
-        <span className="label">🚀 Creative Studio</span>
+        <span className="label">Creative Studio</span>
         <h1>Build complete launches, not just content.</h1>
         <p>
           Plan every asset from a single campaign brief, let the Creative Director score it,
@@ -22,7 +22,7 @@ export default function StudioHome() {
           return (
             <Link key={c} href={`/studio/${c}`} className="st-card st-card-link">
               <div className="st-card-top">
-                <span className="st-card-kind">{m.icon} {m.label}</span>
+                <span className="st-card-kind">{m.label}</span>
               </div>
               <p className="st-card-meta">{m.blurb}</p>
               <span className="st-card-cta st-card-open">Open →</span>

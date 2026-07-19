@@ -1,18 +1,23 @@
 "use client";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { usePathname } from "next/navigation";
 
 // Early Access rotating banner + application modal.
 // Presentation only — it posts to /api/early-access (the single intake seam) and
 // mirrors the interest enum in lib/early-access.ts (EA_INTERESTS). Mounted globally
-// in the root layout so it sits at the very top of the application.
+// in the root layout so it sits at the very top of the application, EXCEPT the /app
+// product shell (a fixed 100svh layout the banner must not push off-screen).
+//
+// It pins to the top and publishes its height as --eab-h so sticky sub-navigation
+// (landing nav, studio sidebar) can offset beneath it instead of overlapping.
 
-type Slide = { icon: string; text: string };
+const BANNER_H = 44; // px — fixed single-line height so the offset is deterministic
 
-const SLIDES: Slide[] = [
-  { icon: "🚀", text: "Create complete product launches, not just content." },
-  { icon: "🎬", text: "Launch videos, UGC videos, motion graphics and premium creatives are coming." },
-  { icon: "✨", text: "Join the Early Access Program and get priority access." },
-  { icon: "❤️", text: "Limited beta spots available. Help shape the future of Populr." },
+const SLIDES: string[] = [
+  "Create complete product launches, not just content.",
+  "Launch videos, UGC videos, motion graphics and premium creatives are coming.",
+  "Join the Early Access Program and get priority access.",
+  "Limited beta spots available. Help shape the future of Populr.",
 ];
 
 const ROTATE_MS = 5500;
@@ -29,17 +34,29 @@ const INTERESTS: { value: string; label: string }[] = [
 const TEAM_SIZES = ["Just me", "2–10", "11–50", "51–200", "200+"];
 
 export default function EarlyAccessBanner() {
+  const path = usePathname();
   const [i, setI] = useState(0);
   const [open, setOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [hover, setHover] = useState(false);
 
+  // Never render on the /app product shell (fixed 100svh layout).
+  const suppressed = path?.startsWith("/app") ?? false;
+  const hidden = dismissed || suppressed;
+
+  // Publish the banner height so sticky sub-navs can offset below it (0 when hidden).
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--eab-h", hidden ? "0px" : `${BANNER_H}px`);
+    return () => root.style.setProperty("--eab-h", "0px");
+  }, [hidden]);
+
   // Rotate the slides; pause while hovering or while the modal is open.
   useEffect(() => {
-    if (open || hover) return;
+    if (open || hover || hidden) return;
     const t = setInterval(() => setI((n) => (n + 1) % SLIDES.length), ROTATE_MS);
     return () => clearInterval(t);
-  }, [open, hover]);
+  }, [open, hover, hidden]);
 
   // Restore a prior dismissal so the bar doesn't nag on every navigation.
   useEffect(() => {
@@ -64,8 +81,7 @@ export default function EarlyAccessBanner() {
     try { sessionStorage.setItem("ea_banner_dismissed", "1"); } catch { /* ignore */ }
   }
 
-  if (dismissed) return null;
-  const slide = SLIDES[i];
+  if (hidden) return null;
 
   return (
     <>
@@ -80,8 +96,7 @@ export default function EarlyAccessBanner() {
         onMouseLeave={() => setHover(false)}
       >
         <div className="eab-msg" key={i}>
-          <span className="eab-ic" aria-hidden="true">{slide.icon}</span>
-          <span className="eab-text">{slide.text}</span>
+          <span className="eab-text">{SLIDES[i]}</span>
         </div>
         <div className="eab-right">
           <button className="eab-cta" onClick={(e) => { e.stopPropagation(); setOpen(true); }}>
