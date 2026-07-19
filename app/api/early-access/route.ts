@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     // provider never blocks the signup. Only email brand-new applicants.
     let emailed = false;
     if (created) emailed = await sendWelcomeEmail(v.value.name, v.value.email);
-    console.info(JSON.stringify({ event: "early_access_signup", created, emailed }));
+    console.info(JSON.stringify({ event: "early_access_signup", created, emailed, interests: v.value.interests.length }));
     return NextResponse.json({ ok: true, created, emailed });
   } catch (e) {
     console.info(JSON.stringify({ event: "early_access_error", detail: String(e).slice(0, 200) }));

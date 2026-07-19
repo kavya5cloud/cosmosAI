@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/react";
+import EarlyAccessBanner from "./components/EarlyAccessBanner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -27,6 +28,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <EarlyAccessBanner />
         {children}
         <Analytics />
       </body>

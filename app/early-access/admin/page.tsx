@@ -4,12 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 type App = {
   id: string;
   created_at: string;
-  name: string;
+  name: string | null;
   email: string;
   company: string | null;
   website: string | null;
   industry: string | null;
   marketing_challenge: string | null;
+  team_size: string | null;
+  project: string | null;
+  interests: string[] | null;
   status: string;
   notes: string | null;
 };
@@ -17,8 +20,8 @@ type App = {
 const STATUSES = ["all", "new", "contacted", "accepted", "rejected"] as const;
 
 function csv(rows: App[]): string {
-  const cols = ["created_at", "name", "email", "company", "website", "industry", "marketing_challenge", "status", "notes"] as const;
-  const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const cols = ["created_at", "name", "email", "company", "website", "industry", "team_size", "project", "interests", "marketing_challenge", "status", "notes"] as const;
+  const esc = (v: unknown) => `"${String(Array.isArray(v) ? v.join("; ") : (v ?? "")).replace(/"/g, '""')}"`;
   return [cols.join(","), ...rows.map((r) => cols.map((c) => esc(r[c as keyof App])).join(","))].join("\n");
 }
 
@@ -100,17 +103,18 @@ export default function EarlyAccessAdmin() {
         <div className="eaa-scroll">
           <table className="eaa-table">
             <thead>
-              <tr><th>Date</th><th>Name</th><th>Email</th><th>Company</th><th>Industry</th><th>Challenge</th><th>Status</th><th>Actions</th></tr>
+              <tr><th>Date</th><th>Name</th><th>Email</th><th>Company</th><th>Team</th><th>Interests</th><th>Building / Challenge</th><th>Status</th><th>Actions</th></tr>
             </thead>
             <tbody>
               {filtered.map((a) => (
                 <tr key={a.id}>
                   <td className="eaa-mono">{new Date(a.created_at).toISOString().slice(0, 10)}</td>
-                  <td>{a.name}</td>
+                  <td>{a.name || "—"}</td>
                   <td className="eaa-mono"><a href={`mailto:${a.email}`}>{a.email}</a></td>
                   <td>{a.company || "—"}{a.website ? <><br /><a className="eaa-web" href={a.website.startsWith("http") ? a.website : `https://${a.website}`} target="_blank" rel="noopener noreferrer">{a.website}</a></> : null}</td>
-                  <td>{a.industry || "—"}</td>
-                  <td className="eaa-chal" title={a.marketing_challenge || ""}>{a.marketing_challenge || "—"}</td>
+                  <td>{a.team_size || "—"}</td>
+                  <td className="eaa-chal">{a.interests && a.interests.length ? a.interests.map((i) => i.replace(/_/g, " ")).join(", ") : "—"}</td>
+                  <td className="eaa-chal" title={a.project || a.marketing_challenge || ""}>{a.project || a.marketing_challenge || "—"}</td>
                   <td><span className="eaa-status" data-s={a.status}>{a.status}</span></td>
                   <td className="eaa-actions">
                     <button onClick={() => setStatus(a.id, "accepted")} disabled={a.status === "accepted"}>Accept</button>

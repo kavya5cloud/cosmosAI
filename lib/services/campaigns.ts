@@ -97,6 +97,24 @@ export type CampaignRow = {
   done_tasks: number[];
 };
 
+/** Load a single campaign by id, workspace-scoped. Returns null if not owned/found. */
+export async function getCampaign(sql: Sql, wsKey: string, id: string): Promise<CampaignRow | null> {
+  await ensureCampaignTables(sql);
+  const rows = (await sql`
+    SELECT c.id, c.goal, c.title, c.brief, c.channels, c.timeline_days, c.priority,
+           c.expected_impact, c.reasoning, c.tasks, c.status, c.created_at,
+           COALESCE(
+             (SELECT array_agg(DISTINCT (e.metadata->>'taskIndex')::int)
+              FROM campaign_events e
+              WHERE e.campaign_id = c.id AND e.event = 'task_done' AND e.metadata ? 'taskIndex'),
+             '{}'
+           ) AS done_tasks
+    FROM campaigns c
+    WHERE c.id = ${id} AND c.workspace_key = ${wsKey}
+    LIMIT 1`) as CampaignRow[];
+  return rows[0] ?? null;
+}
+
 export async function listCampaigns(sql: Sql, wsKey: string): Promise<CampaignRow[]> {
   await ensureCampaignTables(sql);
   const rows = (await sql`
