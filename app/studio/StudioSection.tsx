@@ -1,4 +1,5 @@
 import { CATEGORY_META, kindsForCategory, type CreativeCategory } from "@/lib/creative/taxonomy";
+import GenerateButton from "./GenerateButton";
 
 // Production-ready section scaffold shared by every studio page. Renders the
 // category header plus placeholder cards for each asset kind in that category.
@@ -27,7 +28,7 @@ export default function StudioSection({ category }: { category: CreativeCategory
                 <span className="st-soon">Soon</span>
               </div>
               <p className="st-card-meta">{k.channel} · effort {k.effort}/5{k.foundational ? " · foundational" : ""}</p>
-              <button className="st-card-cta" disabled>Generate</button>
+              <GenerateButton category={category} label={k.label} />
             </article>
           ))}
         </div>

@@ -4,6 +4,7 @@ import { loadState, saveState, workspaceId, type Saved, type Profile, type Draft
 import { CHANNEL_LABELS, formatWindowLabel, channelSchedule, type PublishChannel } from "@/lib/publish-times";
 import { matchGscSite, displaySite } from "@/lib/gsc-match";
 import { fetchPushStatus, subscribePush, unsubscribePush, type PushStatus } from "@/lib/push-client";
+import { AIProcessing } from "@/app/components/ai-processing";
 
 /* ---------- AI call (proxied through /api/generate) ---------- */
 async function ai(prompt: string, url?: string): Promise<string> {
@@ -316,7 +317,7 @@ function buildTermLines(brand: string, host: string, channels: string[], agentCo
   const shown = channels.slice(0, 6);
   for (const ch of shown) lines.push(["", `> [${ch}] scanning for ${brand} opportunities…`]);
   lines.push(["", "> fetching analytics…"]);
-  lines.push(["", "> loading documents and initializing AI chat…"]);
+  lines.push(["", "> reviewing documents and preparing your CMO…"]);
   lines.push(["tl-ok", `✓ AI CMO ready — ${agentCount} agent${agentCount === 1 ? "" : "s"} on ${host}`]);
   return lines;
 }
@@ -1311,7 +1312,11 @@ Output ONLY this JSON, nothing else: {"impressions":<integer>,"clicks":<integer>
                   </div>
                 );
               })}
-              {typing && <span className="typing">AI CMO is thinking…</span>}
+              {typing && (
+                <div className="chat-processing">
+                  <AIProcessing requestType={chatMode === "copy" ? "creative" : "strategy"} active={typing} />
+                </div>
+              )}
             </div>
             <div className="chat-foot">
               <div className="chatbox">
