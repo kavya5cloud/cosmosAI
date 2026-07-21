@@ -1175,3 +1175,22 @@ html{scroll-padding-top:var(--eab-h,0px)}
 .chat-processing{margin:2px 0 6px;max-width:440px}
 .st-card-gen{cursor:pointer;color:var(--fg);border-color:var(--line);transition:border-color .15s,color .15s,background .15s}
 .st-card-gen:hover{border-color:var(--acc);color:var(--acc);background:rgba(213,255,114,.08)}
+
+/* ---- Job execution dashboard (Milestone 11) ---- */
+.job-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:8px}
+.job-tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 15px}
+.job-tile-v{font-size:22px;font-weight:600;letter-spacing:-.02em;color:var(--fg)}
+.job-tile-k{font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-top:4px}
+.job-list{display:flex;flex-direction:column;gap:8px}
+.job-row{display:grid;grid-template-columns:150px 130px 1fr 200px;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.job-type{font-size:13px;font-weight:600;color:var(--fg);text-transform:capitalize}
+.job-state{font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--dim)}
+.job-state.job-ok{color:var(--acc)}
+.job-state.job-bad{color:var(--redd)}
+.job-state.job-warn{color:var(--amberr)}
+.job-state.job-muted{color:var(--faint)}
+.job-bar{height:6px;border-radius:100px;background:rgba(255,255,255,.06);overflow:hidden}
+.job-bar-fill{display:block;height:100%;border-radius:100px;background:linear-gradient(90deg,#9fe45f,#d5ff72);transition:width .5s ease}
+.job-meta{font-family:'Geist Mono',monospace;font-size:10.5px;color:var(--faint);text-align:right}
+.lw-chip.job-warn{border-color:rgba(242,191,112,.4);color:var(--amberr)}
+@media(max-width:720px){.job-row{grid-template-columns:1fr 1fr;gap:8px}.job-bar,.job-meta{grid-column:1/-1;text-align:left}}

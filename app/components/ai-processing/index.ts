@@ -7,6 +7,7 @@ export { default as ProcessingStage } from "./ProcessingStage";
 export { default as QueueStatus } from "./QueueStatus";
 export { default as LoadingOverlay } from "./LoadingOverlay";
 export { useAIProcessing, type UseAIProcessingInput, type AIProcessingState, type AIStatus } from "./useAIProcessing";
+export { useJobProgress } from "./useJobProgress";
 export {
   STAGE_SEQUENCES, PROGRESS_STATES, resolveRequestType, formatWait,
   type RequestType, type Stage, type ProgressPhase,

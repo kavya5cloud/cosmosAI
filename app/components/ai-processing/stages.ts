@@ -65,6 +65,25 @@ export const PROGRESS_STATES: Record<ProgressPhase, { icon: string; title: strin
   completed:  { icon: "✅", title: "Completed", description: "Ready", anim: "" },
 };
 
+// Live mode — Job pipeline states → display stages (Part 12). Control states are excluded.
+export const JOB_STATE_STAGE: Record<string, Stage> = {
+  queued: { icon: "🧊", title: "Queued", hint: "Safely in line" },
+  waiting_for_resources: { icon: "⏳", title: "Waiting for resources", hint: "Allocating capacity" },
+  planning: { icon: "🎯", title: "Planning", hint: "Choosing the approach" },
+  creative_intelligence: { icon: "🧠", title: "Creative Intelligence", hint: "Building the specification" },
+  generating: { icon: "✨", title: "Generating", hint: "Producing the asset" },
+  creative_director_review: { icon: "🔍", title: "Creative Director review", hint: "Checking it's on-brand" },
+  approval: { icon: "✅", title: "Approval", hint: "Signing off" },
+  publishing: { icon: "📣", title: "Publishing", hint: "Distributing" },
+  learning_update: { icon: "📈", title: "Learning", hint: "Getting smarter from the outcome" },
+  completed: { icon: "🎉", title: "Completed", hint: "Ready" },
+};
+
+/** Build the display stage list for a live job from its concrete pipeline states. */
+export function jobDisplayStages(states: string[]): Stage[] {
+  return states.map((s) => JOB_STATE_STAGE[s]).filter(Boolean);
+}
+
 // Map any product feature to the right stage sequence, so callers can pass a feature name.
 const FEATURE_ALIASES: Record<string, RequestType> = {
   chat: "general", general: "general", ask: "general",

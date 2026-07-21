@@ -1,5 +1,7 @@
 "use client";
+import { useEffect, useRef } from "react";
 import { useAIProcessing, type UseAIProcessingInput } from "./useAIProcessing";
+import { useJobProgress } from "./useJobProgress";
 import AIProgress from "./AIProgress";
 import ProcessingStage, { type StageState } from "./ProcessingStage";
 import QueueStatus from "./QueueStatus";
@@ -10,6 +12,10 @@ export type AIProcessingProps = UseAIProcessingInput & {
   /** "inline" (embeds in a panel) or "overlay" (full card, used by LoadingOverlay). */
   variant?: "inline" | "overlay";
   className?: string;
+  /** When set, progress is driven by REAL job execution (polls /api/jobs/{id}), not simulated. */
+  jobId?: string | null;
+  /** Fires once when the work reaches the completed phase (e.g. to auto-close an overlay). */
+  onComplete?: () => void;
 };
 
 const DEFAULT_TITLE: Record<string, string> = {
@@ -25,8 +31,18 @@ const DEFAULT_TITLE: Record<string, string> = {
 // otherwise the animated progress bar + the request's real work stages. Works inline or
 // inside the fullscreen overlay. Never shows a spinner or the word "loading".
 export default function AIProcessing(props: AIProcessingProps) {
-  const s = useAIProcessing(props);
+  // Real job progress wins over simulation whenever a job id is available (Part 12).
+  const live = useJobProgress(props.jobId);
+  const simulated = useAIProcessing(props);
+  const s = live ?? simulated;
   const variant = props.variant ?? "inline";
+
+  // Fire onComplete once when the work finishes (auto-close overlays, etc.).
+  const firedComplete = useRef(false);
+  useEffect(() => {
+    if (s.phase === "completed" && !firedComplete.current) { firedComplete.current = true; props.onComplete?.(); }
+    if (s.phase !== "completed") firedComplete.current = false;
+  }, [s.phase, props]);
 
   if (s.isQueued) {
     return (
