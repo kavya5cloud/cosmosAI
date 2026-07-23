@@ -8,7 +8,7 @@ Now a **Next.js** app with real AI (Groq/Gemini/OpenAI) and persistence.
 
 ```bash
 npm install
-npm run dev
+npm run dev    
 # → http://localhost:3000
 ```
 
